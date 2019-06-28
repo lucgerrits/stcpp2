@@ -5,33 +5,11 @@ This will later on:
 - make (random) payload
 - sign/build transaction based on keys and payload
 - send the batch transaction to sawtooth already existing network
-
-TODO: makefile->needs to compile first
-
---Luc--
-*/
-
-/*
-LIBs:
-apt-cache pkgnames | grep -i crypto++
-
-apt-get install crypto++*
-apt-get install libcurl4-openssl-dev
-apt-get install libcbor-dev
-apt-get install libjsoncpp*
-
-Docs:
-https://www.cryptopp.com/wiki/Main_Page
-https://buildmedia.readthedocs.org/media/pdf/libcbor/latest/libcbor.pdf
-
-Ref:
-https://github.com/hyperledger/sawtooth-sdk-cxx
 */
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <stdio.h>
-#include "myfunctions.h"
 #include "base64/base64.h"
 #include <curl/curl.h>
 #include <assert.h>
@@ -40,232 +18,130 @@ https://github.com/hyperledger/sawtooth-sdk-cxx
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
+typedef unsigned char byte;
+
 #define PRIVATEKEY_FILENAME "ec.private.key"
 #define PUBLICKEY_FILENAME "ec.public.key"
 #define SAWTOOTH_REST_API "https://sawtooth-explore-8090.gerrits-luc.com"
-#define URL_PREFIX "https://"
-#define URL_PREFIX_LEN 8
-#define USE_CHUNKED 1
 #define SAWTOOTH_BATCH_MAX_TRANSACTIONS 100
+#define PRIVATE_KEY_SIZE 32
 
-void Usage(bool bExit = false, int exitCode = 1)
+void abort(void) __THROW __attribute__((__noreturn__));
+#define TEST_FAILURE(msg)                                        \
+    do                                                           \
+    {                                                            \
+        fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, msg); \
+        abort();                                                 \
+    } while (0)
+#define EXPECT(x, c) __builtin_expect((x), (c))
+#define CHECK(cond)                                        \
+    do                                                     \
+    {                                                      \
+        if (EXPECT(!(cond), 0))                            \
+        {                                                  \
+            TEST_FAILURE("test condition failed: " #cond); \
+        }                                                  \
+    } while (0)
+
+#include "secp256k1/include/secp256k1_ecdh.h"
+#include "secp256k1/include/secp256k1.h"
+#include "secp256k1/include/secp256k1_preallocated.h"
+using SECP256K1_API::secp256k1_ec_pubkey_create;
+
+#include "cryptopp/cryptlib.h"
+#include "cryptopp/osrng.h"
+using CryptoPP::AutoSeededRandomPool;
+
+//https://stackoverflow.com/a/14051107/11697589
+std::string hexStr(byte *data, int len) //bytes to string
 {
-    std::cout << "Usage" << std::endl;
-    std::cout << "intkey_cxx [options] [connet_string]" << std::endl;
-    std::cout << "  -h, --help - print this message" << std::endl;
-
-    std::cout << "  more to come..."
-              << std::endl;
-
-    if (bExit)
-    {
-        exit(exitCode);
-    }
+    std::stringstream ss;
+    ss << std::hex;
+    for (int i(0); i < len; ++i)
+        ss << (int)data[i];
+    return ss.str();
 }
-bool TestConnectString(const char *str)
+//http://www.cplusplus.com/forum/general/53397/
+int chhex(char ch)
 {
-    const char *ptr = str;
-
-    if (strncmp(str, URL_PREFIX, URL_PREFIX_LEN))
-    {
-        return false;
-    }
-
-    ptr = str + URL_PREFIX_LEN;
-
-    if (!isdigit(*ptr))
-    {
-        if (*ptr == ':' || (ptr = strchr(ptr, ':')) == NULL)
-        {
-            return false;
-        }
-        ptr++;
-    }
-    else
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            if (!isdigit(*ptr))
-            {
-                return false;
-            }
-
-            ptr++;
-            if (isdigit(*ptr))
-            {
-                ptr++;
-                if (isdigit(*ptr))
-                {
-                    ptr++;
-                }
-            }
-
-            if (i < 3)
-            {
-                if (*ptr != '.')
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                if (*ptr != ':')
-                {
-                    return false;
-                }
-            }
-            ptr++;
-        }
-    }
-
-    for (int i = 0; i < 4; i++)
-    {
-        if (!isdigit(*ptr))
-        {
-            if (i == 0)
-            {
-                return false;
-            }
-            break;
-        }
-        ptr++;
-    }
-
-    if (*ptr != 0)
-    {
-        return false;
-    }
-
-    return true;
+    if (isdigit(ch))
+        return ch - '0';
+    if (tolower(ch) >= 'a' && tolower(ch) <= 'f')
+        return ch - 'a' + 10;
+    return -1;
 }
-void ParseArgs(int argc, char **argv, std::string &connectStr)
+void hexstrToUchar(unsigned char *dest, const char *source, int bytes_n)
 {
-    for (int i = 1; i < argc; i++)
-    {
-        const char *arg = argv[i];
-        if (!strcmp(arg, "-h") || !strcmp(arg, "--help"))
-        {
-            Usage(true, 0);
-        }
-        else
-        {
-            if (!TestConnectString(arg))
-            {
-                std::cout << "Connect string is not in format host:port - "
-                          << arg << std::endl;
-                Usage(true);
-            }
-            else
-            {
-                connectStr = arg;
-            }
-        }
-    }
+    for (bytes_n--; bytes_n >= 0; bytes_n--)
+        dest[bytes_n] = 16 * chhex(source[bytes_n * 2]) + chhex(source[bytes_n * 2 + 1]);
+}
+void generatePrivateKey(byte *key, int length)
+{
+    AutoSeededRandomPool rng;
+    rng.GenerateBlock(key, length);
 }
 
 int main(int argc, char **argv)
 {
-    std::string connectString = SAWTOOTH_REST_API;
-    ParseArgs(argc, argv, connectString);
-    //std::cout << "Start transaction c++ tester \n";
-    bool result = false;
-
-    /////////////////////////////////////////////
-    //Creating Private and Public Keys
-    ECDSA<ECP, SHA256>::PrivateKey privateKey;
-    ECDSA<ECP, SHA256>::PublicKey publicKey;
-
-    if (MYFUNC::myfunctions::files_exist(PRIVATEKEY_FILENAME))
-    {
-        // Load Key
-        //std::cout << "File " << PRIVATEKEY_FILENAME << " exist, loading...\n";
-        MYFUNC::myfunctions::LoadPrivateKey(PRIVATEKEY_FILENAME, privateKey);
-    }
-    else
-    {
-        // Generate Keys
-        result = MYFUNC::myfunctions::GeneratePrivateKey(CryptoPP::ASN1::secp256k1(), privateKey);
-        assert(true == result);
-        if (!result)
-        {
-            return -1;
-        }
-        // Save key in PKCS#9 and X.509 format
-        MYFUNC::myfunctions::SavePrivateKey(PRIVATEKEY_FILENAME, privateKey);
-    }
-
-    if (MYFUNC::myfunctions::files_exist(PUBLICKEY_FILENAME))
-    {
-        // Load Key
-        //std::cout << "File " << PUBLICKEY_FILENAME << " exist, loading...\n";
-        MYFUNC::myfunctions::LoadPublicKey(PUBLICKEY_FILENAME, publicKey);
-    }
-    else
-    {
-        // Generate Keys
-        result = MYFUNC::myfunctions::GeneratePublicKey(privateKey, publicKey);
-        assert(true == result);
-        if (!result)
-        {
-            return -2;
-        }
-        // Save key in PKCS#9 and X.509 format
-        MYFUNC::myfunctions::SavePublicKey(PUBLICKEY_FILENAME, publicKey);
-    }
-    //publicKey.AccessGroupParameters().SetPointCompression(true);
-
-    // Print Domain Parameters and Keys
-    // MYFUNC::myfunctions::PrintDomainParameters(publicKey);
-    //MYFUNC::myfunctions::PrintPrivateKey(privateKey);
-    //MYFUNC::myfunctions::PrintPublicKey(publicKey);
-
-    MYFUNC::myfunctions::PrintPrivateKeyHex(privateKey);
-    MYFUNC::myfunctions::PrintPublicKeyHex(publicKey);
-
-    //MYFUNC::myfunctions::PrintPrivateKeyBase64(privateKey);
-    //MYFUNC::myfunctions::PrintPublicKeyBase64(publicKey);
-
-    /////////////////////////////////////////////
-    //initialize message/payload list
-    std::string messages[SAWTOOTH_BATCH_MAX_TRANSACTIONS];
-    for (int i = 0; i < SAWTOOTH_BATCH_MAX_TRANSACTIONS; i++)
-    {
-        messages[i] = "";
-    }
-    //set the messages:
-    std::string message = "";
-    message = "{'Verb': 'set','Name': 'foo','Value': 42}";
-    messages[0] = message;
-
     json payload;
     payload["Verb"] = "set";
     payload["Name"] = "foo";
     payload["Value"] = 42;
 
-    // std::cerr << payload.dump(4) << std::endl;
+    secp256k1_context *ctx;
+    secp256k1_pubkey publicKey;
+    unsigned char privateKey[PRIVATE_KEY_SIZE];
+    // secp256k1_ecdsa_signature signature;
 
-    // std::vector<std::uint8_t> payload_vector = json::to_cbor(payload);
-    // std::cerr << payload_vector.data() << std::endl;
-    /////////////////////////////////////////////
-    //build the batch:
-    //std::ostream &batch_string = std::cout;
-    result = MYFUNC::myfunctions::buildBatchFromMessages(privateKey, publicKey, payload, &std::cout);
-    //std::string batch_string;
-    //result = MYFUNC::myfunctions::buildBatchFromMessages(privateKey, publicKey, messages, SAWTOOTH_BATCH_MAX_TRANSACTIONS, batch_string);
-    assert(true == result);
+    std::ifstream privateKey_file;
+    privateKey_file.open(PRIVATEKEY_FILENAME);
+    if (privateKey_file.is_open())
+    {
+        std::string line;
+        std::getline(privateKey_file, line);
+        privateKey_file.close();
+        if (line.length() == (int)PRIVATE_KEY_SIZE * 2)
+        {
+            /* Retrieve the key */
+            hexstrToUchar(privateKey, line.c_str(), PRIVATE_KEY_SIZE);
+            CHECK(secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
+            std::cout << "Existing key ok:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
+        }
+        else
+        {
+            /* Generate a random key */
+            while (hexStr(privateKey, PRIVATE_KEY_SIZE).length() != (int)PRIVATE_KEY_SIZE * 2)
+            {
+                generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
+            }
+            CHECK(secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
+            std::cout << "New key ok:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
+            std::ofstream privateKey_file;
+            privateKey_file.open(PRIVATEKEY_FILENAME);
+            privateKey_file << hexStr(privateKey, PRIVATE_KEY_SIZE);
+            privateKey_file.close();
+        }
+    }
+    else
+    {
+        std::cout << "Unable to open " << PRIVATEKEY_FILENAME << std::endl;
+        /* Generate a random key */
+        while (hexStr(privateKey, PRIVATE_KEY_SIZE).length() != (int)PRIVATE_KEY_SIZE * 2)
+        {
+            generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
+        }
+        CHECK(secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
+        std::cout << "New key ok:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
+        std::ofstream privateKey_file;
+        privateKey_file.open(PRIVATEKEY_FILENAME);
+        privateKey_file << hexStr(privateKey, PRIVATE_KEY_SIZE);
+        privateKey_file.close();
+    }
 
-    //std::cout << batch_string << std::endl;
-
-    /////////////////////////////////////////////
-    //Send the batch to the SAWTOOTH REST API
-    //batch need to be in protbuf format
-    //sended in a ocet-stream request to the api
-    //Doc: https://sawtooth.hyperledger.org/docs/core/releases/latest/rest_api/endpoint_specs.html#post--batches
-
-    std::string batch_api_endpoint = std::string(connectString) + std::string("/blocks");
-    // std::cout << "SAWTOOTH API: \n"
-    //           << batch_api_endpoint << std::endl;
-    // Now send the transaction with curl in command line
-
+    /* Generate a public key */
+    {
+        //FAILING:Segmentation fault
+        CHECK(secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
+    }
     return 0;
 }

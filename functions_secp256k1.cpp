@@ -8,6 +8,22 @@
 #include <iomanip>
 #include <string>
 
+#include "cryptopp/cryptlib.h"
+#include "cryptopp/osrng.h"
+using CryptoPP::AutoSeededRandomPool;
+// #include "cryptopp/base64.h"
+// #include "cryptopp/queue.h"
+// #include "cryptopp/hex.h"
+// #include "cryptopp/aes.h"
+// #include "cryptopp/integer.h"
+// #include "cryptopp/sha.h"
+// #include "cryptopp/filters.h"
+// #include "cryptopp/files.h"
+// #include "cryptopp/eccrypto.h"
+// #include "cryptopp/oids.h"
+// #include "cryptopp/pubkey.h"
+// #include "cryptopp/rng.h"
+// #include "cryptopp/mersenne.h"
 #include <secp256k1.h>
 
 #include "cbor-cpp/src/cbor.h"
@@ -20,3 +36,4 @@
 
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
+
