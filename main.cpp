@@ -46,7 +46,6 @@ void abort(void) __THROW __attribute__((__noreturn__));
 #include "secp256k1/include/secp256k1_ecdh.h"
 #include "secp256k1/include/secp256k1.h"
 #include "secp256k1/include/secp256k1_preallocated.h"
-using SECP256K1_API::secp256k1_ec_pubkey_create;
 
 #include "cryptopp/cryptlib.h"
 #include "cryptopp/osrng.h"
@@ -79,6 +78,7 @@ void generatePrivateKey(byte *key, int length)
 {
     AutoSeededRandomPool rng;
     rng.GenerateBlock(key, length);
+    std::cout << "generatePrivateKey:" << hexStr(key, length) << std::endl;
 }
 
 int main(int argc, char **argv)
@@ -93,55 +93,19 @@ int main(int argc, char **argv)
     unsigned char privateKey[PRIVATE_KEY_SIZE];
     // secp256k1_ecdsa_signature signature;
 
-    std::ifstream privateKey_file;
-    privateKey_file.open(PRIVATEKEY_FILENAME);
-    if (privateKey_file.is_open())
+    /* Generate a random key */
+    generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
+    while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
     {
-        std::string line;
-        std::getline(privateKey_file, line);
-        privateKey_file.close();
-        if (line.length() == (int)PRIVATE_KEY_SIZE * 2)
-        {
-            /* Retrieve the key */
-            hexstrToUchar(privateKey, line.c_str(), PRIVATE_KEY_SIZE);
-            CHECK(secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
-            std::cout << "Existing key ok:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
-        }
-        else
-        {
-            /* Generate a random key */
-            while (hexStr(privateKey, PRIVATE_KEY_SIZE).length() != (int)PRIVATE_KEY_SIZE * 2)
-            {
-                generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
-            }
-            CHECK(secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
-            std::cout << "New key ok:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
-            std::ofstream privateKey_file;
-            privateKey_file.open(PRIVATEKEY_FILENAME);
-            privateKey_file << hexStr(privateKey, PRIVATE_KEY_SIZE);
-            privateKey_file.close();
-        }
+        generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
     }
-    else
-    {
-        std::cout << "Unable to open " << PRIVATEKEY_FILENAME << std::endl;
-        /* Generate a random key */
-        while (hexStr(privateKey, PRIVATE_KEY_SIZE).length() != (int)PRIVATE_KEY_SIZE * 2)
-        {
-            generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
-        }
-        CHECK(secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
-        std::cout << "New key ok:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
-        std::ofstream privateKey_file;
-        privateKey_file.open(PRIVATEKEY_FILENAME);
-        privateKey_file << hexStr(privateKey, PRIVATE_KEY_SIZE);
-        privateKey_file.close();
-    }
-
+    CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
+    std::cout << "Private key verified. Using:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
+    
     /* Generate a public key */
     {
         //FAILING:Segmentation fault
-        CHECK(secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
+        CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
     }
     return 0;
 }
