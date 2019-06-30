@@ -26,6 +26,7 @@ typedef unsigned char byte;
 #define SAWTOOTH_BATCH_MAX_TRANSACTIONS 100
 #define PRIVATE_KEY_SIZE 32
 #define PUBLIC_KEY_SIZE 64
+#define PUBLIC_KEY_SERILIZED_SIZE 33
 
 void abort(void) __THROW __attribute__((__noreturn__));
 #define TEST_FAILURE(msg)                                        \
@@ -82,7 +83,7 @@ void generatePrivateKey(byte *key, int length)
     std::cout << "generatePrivateKey:" << hexStr(key, length) << std::endl;
 }
 
-static SECP256K1_API::secp256k1_context *ctx = SECP256K1_API::secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+static SECP256K1_API::secp256k1_context *ctx = SECP256K1_API::secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
 
 int main(int argc, char **argv)
 {
@@ -92,23 +93,36 @@ int main(int argc, char **argv)
     payload["Value"] = 42;
 
     unsigned char privateKey[PRIVATE_KEY_SIZE];
+    size_t publicKey_serilized_len = (size_t)PUBLIC_KEY_SERILIZED_SIZE;
+    unsigned char publicKey_serilized[PUBLIC_KEY_SERILIZED_SIZE];
     SECP256K1_API::secp256k1_pubkey publicKey;
     // secp256k1_ecdsa_signature signature;
 
     /* Generate a random key */
-    generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
-    while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
     {
         generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
+        while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
+        {
+            generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
+        }
+        CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
+        std::cout << "Private key verified.\n->Using:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
     }
-    CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
-    std::cout << "Private key verified.\n->Using:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
 
     /* Generate a public key */
     {
         //FAILING:Segmentation fault
         CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
-        std::cout << "Public key verified.\n->Using:" << hexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
+        std::cout << "Public key verified." << std::endl;
+        std::cout << "->Using:" << hexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
+    }
+
+    /* Serilize public key */
+    {
+        SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &publicKey_serilized_len, &publicKey, SECP256K1_EC_COMPRESSED);
+        std::cout << "Public key serilized ok." << std::endl;        
+        std::cout << "->Using:" << hexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE) << std::endl;
+        //probably will need to prepend "0" to the pubkey above: because the compressed version of this pub key should ALLWAYS start by "02" or "03".
     }
 
     return 0;
