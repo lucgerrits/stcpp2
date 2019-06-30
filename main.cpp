@@ -52,6 +52,14 @@ void abort(void) __THROW __attribute__((__noreturn__));
 #include "cryptopp/cryptlib.h"
 #include "cryptopp/osrng.h"
 using CryptoPP::AutoSeededRandomPool;
+#include "cryptopp/hex.h"
+using CryptoPP::HexEncoder;
+#include "cryptopp/sha.h"
+using CryptoPP::SHA256;
+#include "cryptopp/filters.h"
+using CryptoPP::Redirector;
+using CryptoPP::StringSink;
+using CryptoPP::StringSource;
 
 //https://stackoverflow.com/a/14051107/11697589
 std::string hexStr(byte *data, int len) //bytes to string
@@ -83,6 +91,23 @@ void generatePrivateKey(byte *key, int length)
     std::cout << "generatePrivateKey:" << hexStr(key, length) << std::endl;
 }
 
+std::string hashData(std::string data)
+{
+    /////////////////////////////////////////////
+    //Create a SHA-512 data Hash
+    std::vector<uint8_t> message_vect(data.begin(), data.end());
+    std::string digest_hex;
+    HexEncoder encoder(new StringSink(digest_hex), false);
+    std::string digest;
+
+    SHA256 hash;
+    hash.Update(message_vect.data(), message_vect.size());
+    digest.resize(hash.DigestSize());
+    hash.Final((byte *)&digest[0]);
+    StringSource ss(digest, true, new Redirector(encoder));
+    return digest_hex;
+}
+
 static SECP256K1_API::secp256k1_context *ctx = SECP256K1_API::secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
 
 int main(int argc, char **argv)
@@ -92,11 +117,14 @@ int main(int argc, char **argv)
     payload["Name"] = "foo";
     payload["Value"] = 42;
 
+    std::string message = "test";
+    std::string message_hash = "";
+
     unsigned char privateKey[PRIVATE_KEY_SIZE];
     size_t publicKey_serilized_len = (size_t)PUBLIC_KEY_SERILIZED_SIZE;
     unsigned char publicKey_serilized[PUBLIC_KEY_SERILIZED_SIZE];
     SECP256K1_API::secp256k1_pubkey publicKey;
-    // secp256k1_ecdsa_signature signature;
+    SECP256K1_API::secp256k1_ecdsa_signature signature;
 
     /* Generate a random key */
     {
@@ -119,10 +147,30 @@ int main(int argc, char **argv)
 
     /* Serilize public key */
     {
-        SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &publicKey_serilized_len, &publicKey, SECP256K1_EC_COMPRESSED);
-        std::cout << "Public key serilized ok." << std::endl;        
+        CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &publicKey_serilized_len, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
+        std::cout << "Public key serilized ok." << std::endl;
         std::cout << "->Using:" << hexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE) << std::endl;
         //probably will need to prepend "0" to the pubkey above: because the compressed version of this pub key should ALLWAYS start by "02" or "03".
+    }
+
+    /* Hash message */
+    {
+        message_hash = hashData(message);
+        std::cout << "Signing is ok." << std::endl;
+        std::cout << "->Using:" << message_hash << std::endl;
+    }
+
+    /* Signing */
+    {
+        const unsigned char *message_hash_char = (const unsigned char *)message_hash.c_str();
+        // unsigned char nonce32[32];
+        // void *data;
+        // unsigned int counter;
+        // SECP256K1_API::secp256k1_nonce_function_rfc6979(nonce32, message_hash_char, privateKey, NULL, NULL, NULL)
+        SECP256K1_API::secp256k1_ecdsa_sign(ctx, &signature, message_hash_char, privateKey, NULL, NULL);
+        //CHECK(SECP256K1_API::secp256k1_ecdsa_sign(ctx, &signature, message_hash_char, &privateKey) == 1);
+        std::cout << "Signing is ok." << std::endl;
+        std::cout << "->Using:" << hexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE) << std::endl;
     }
 
     return 0;
