@@ -25,6 +25,7 @@ typedef unsigned char byte;
 #define SAWTOOTH_REST_API "https://sawtooth-explore-8090.gerrits-luc.com"
 #define SAWTOOTH_BATCH_MAX_TRANSACTIONS 100
 #define PRIVATE_KEY_SIZE 32
+#define PUBLIC_KEY_SIZE 64
 
 void abort(void) __THROW __attribute__((__noreturn__));
 #define TEST_FAILURE(msg)                                        \
@@ -43,9 +44,9 @@ void abort(void) __THROW __attribute__((__noreturn__));
         }                                                  \
     } while (0)
 
-#include "secp256k1/include/secp256k1_ecdh.h"
+// #include "secp256k1/include/secp256k1_ecdh.h"
 #include "secp256k1/include/secp256k1.h"
-#include "secp256k1/include/secp256k1_preallocated.h"
+// #include "secp256k1/include/secp256k1_preallocated.h"
 
 #include "cryptopp/cryptlib.h"
 #include "cryptopp/osrng.h"
@@ -81,6 +82,8 @@ void generatePrivateKey(byte *key, int length)
     std::cout << "generatePrivateKey:" << hexStr(key, length) << std::endl;
 }
 
+static SECP256K1_API::secp256k1_context *ctx = SECP256K1_API::secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+
 int main(int argc, char **argv)
 {
     json payload;
@@ -88,9 +91,8 @@ int main(int argc, char **argv)
     payload["Name"] = "foo";
     payload["Value"] = 42;
 
-    secp256k1_context *ctx;
-    secp256k1_pubkey publicKey;
     unsigned char privateKey[PRIVATE_KEY_SIZE];
+    SECP256K1_API::secp256k1_pubkey publicKey;
     // secp256k1_ecdsa_signature signature;
 
     /* Generate a random key */
@@ -100,12 +102,14 @@ int main(int argc, char **argv)
         generatePrivateKey(privateKey, PRIVATE_KEY_SIZE);
     }
     CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
-    std::cout << "Private key verified. Using:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
-    
+    std::cout << "Private key verified.\n->Using:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
+
     /* Generate a public key */
     {
         //FAILING:Segmentation fault
         CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
+        std::cout << "Public key verified.\n->Using:" << hexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
     }
+
     return 0;
 }

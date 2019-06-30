@@ -92,4 +92,4 @@ clean_proto = protos_pb_h/*
 clean_cryptopp = && cd cryptopp/ && make clean && cd -
 clean_secp256k1 = && cd secp256k1/ && make clean && cd -
 clean:
-	rm -r transactionTest *.o $(clean_cbor) $(clean_keys) $(clean_proto) $(clean_base64) $(clean_cryptopp) $(clean_secp256k1)
+	rm -r transactionTest *.out *.o $(clean_cbor) $(clean_keys) $(clean_proto) $(clean_base64) $(clean_cryptopp) $(clean_secp256k1)
