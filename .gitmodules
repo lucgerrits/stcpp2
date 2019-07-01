@@ -10,3 +10,6 @@
 [submodule "cryptopp"]
 	path = cryptopp
 	url = https://github.com/weidai11/cryptopp.git
+[submodule "cbor-cpp"]
+	path = cbor-cpp
+	url = https://github.com/naphaso/cbor-cpp.git
