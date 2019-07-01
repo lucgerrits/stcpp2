@@ -15,6 +15,9 @@ This will later on:
 #include <assert.h>
 #include <string>
 #include <sys/stat.h>
+
+#include <cxxopts/include/cxxopts.hpp> //to parse arguments
+
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
@@ -22,10 +25,10 @@ using json = nlohmann::json;
 
 //////////////////////////////////////////////////////////////////
 //Define some constants:
-#define PRIVATEKEY_FILENAME "ec.private.key"
-#define PUBLICKEY_FILENAME "ec.public.key"
-#define SAWTOOTH_REST_API "https://sawtooth-explore-8090.gerrits-luc.com"
-#define SAWTOOTH_BATCH_MAX_TRANSACTIONS 100
+// #define PRIVATEKEY_FILENAME "ec.private.key"
+// #define PUBLICKEY_FILENAME "ec.public.key"
+// #define SAWTOOTH_REST_API "https://sawtooth-explore-8090.gerrits-luc.com"
+// #define SAWTOOTH_BATCH_MAX_TRANSACTIONS 100
 #define PRIVATE_KEY_SIZE 32
 #define PUBLIC_KEY_SIZE 64
 #define PUBLIC_KEY_SERILIZED_SIZE 33
@@ -78,6 +81,69 @@ using CryptoPP::StringSource;
 #include "protos_pb_h/batch.pb.h"
 //////////////////////////////////////////////////////////////////
 //END TOP MAIN
+
+//////////////////////////////////////////////////////////////////
+//global variables:
+static SECP256K1_API::secp256k1_context *ctx = SECP256K1_API::secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
+std::string mode = "normal";
+std::string intkey_cmd = "set";
+std::string intkey_key = "foo";
+int intkey_value = 42;
+
+//////////////////////////////////////////////////////////////////
+//Functions:
+
+//following the example: https://github.com/jarro2783/cxxopts/blob/master/src/example.cpp
+cxxopts::ParseResult
+parse(int argc, char *argv[])
+{
+    try
+    {
+        cxxopts::Options options(argv[0], " - example command line options");
+        options
+            .positional_help("[optional args]")
+            .show_positional_help();
+
+        options
+            .allow_unrecognised_options()
+            .add_options()("t,test", "Test the program")
+            //("url", "Sawtooth REST API endpoint", cxxopts::value<std::string>())
+            ("c,cmd", "Inkey CMD: set, dec or inc", cxxopts::value<std::string>())
+            //Inkey key
+            ("k,key", "Inkey key: set, dec or inc", cxxopts::value<std::string>())
+            //Inkey value
+            ("v,value", "Inkey value: set, dec or inc", cxxopts::value<int>());
+
+        auto result = options.parse(argc, argv);
+
+        if (result.count("t"))
+        {
+            //go for test mode
+            mode = "test";
+        }
+        if (result.count("cmd"))
+        {
+            //go for test mode
+            intkey_cmd = result["cmd"].as<std::string>();
+        }
+        if (result.count("key"))
+        {
+            //go for test mode
+            intkey_key = result["key"].as<std::string>();
+        }
+        if (result.count("value"))
+        {
+            //go for test mode
+            intkey_value = result["value"].as<int>();
+        }
+        return result;
+    }
+    catch (const cxxopts::OptionException &e)
+    {
+        std::cout << "error parsing options: " << e.what() << std::endl;
+        exit(1);
+    }
+}
 
 //https://stackoverflow.com/a/14051107/11697589
 //https://stackoverflow.com/questions/7639656/getting-a-buffer-into-a-stringstream-in-hex-representation/7639754#7639754
@@ -156,18 +222,15 @@ void emptyBytes(unsigned char *data, int len)
         data[i] = 0x00;
 }
 
-static SECP256K1_API::secp256k1_context *ctx = SECP256K1_API::secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
-
+//////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
-    std::string mode = "";
-    if (argc > 1)
-        if (strcmp(argv[1], "test") == 0)
-            mode = "test";
+    parse(argc, argv);
+
     json payload;
-    payload["Verb"] = "inc";
-    payload["Name"] = "foo";
-    payload["Value"] = 1;
+    payload["Verb"] = intkey_cmd;
+    payload["Name"] = intkey_key;
+    payload["Value"] = intkey_value;
 
     std::vector<uint8_t> payload_vect = json::to_cbor(payload);
     std::string payload_str(payload_vect.begin(), payload_vect.end());
