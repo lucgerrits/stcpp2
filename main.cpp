@@ -16,7 +16,7 @@ This will later on:
 #include <string>
 #include <sys/stat.h>
 
-#include <cxxopts/include/cxxopts.hpp> //to parse arguments
+#include "cxxopts/include/cxxopts.hpp" //to parse arguments
 
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
