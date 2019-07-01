@@ -24,7 +24,7 @@ using CryptoPP::AutoSeededRandomPool;
 // #include "cryptopp/pubkey.h"
 // #include "cryptopp/rng.h"
 // #include "cryptopp/mersenne.h"
-#include <secp256k1.h>
+#include "secp256k1/include/secp256k1.h"
 
 #include "cbor-cpp/src/cbor.h"
 #include "cbor-cpp/src/output_dynamic.h"
