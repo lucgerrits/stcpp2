@@ -7,3 +7,5 @@ transactionTest
 .vscode/
 
 *.out
+
+protos_pb_h/*
