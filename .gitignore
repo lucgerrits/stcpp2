@@ -2,7 +2,7 @@
 .vscode/ipch
 *.key
 *.o
-transactionTest
+transaction
 
 .vscode/
 
