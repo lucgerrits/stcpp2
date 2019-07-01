@@ -8,6 +8,7 @@ Note: Use `git submodule update --init --recursive` to pull submodules.
 
 Required:
   * git
+  * curl
   * autoconf
   * automake
   * libtool
@@ -15,12 +16,12 @@ Required:
   * g++
   * unzip
 ```
-$ sudo apt-get install git autoconf automake libtool curl make g++ unzip
+$ sudo apt-get install git curl autoconf automake libtool curl make g++ unzip
 ```
 
 Install Protobuf:
 ```
-$ git clone https://github.com/protocolbuffers/protobuf.git
+$ #git clone https://github.com/protocolbuffers/protobuf.git
 $ cd protobuf
 $ git submodule update --init --recursive
 $ ./autogen.sh
@@ -30,4 +31,17 @@ $ make check
 $ sudo make install
 ```
 
-Install Protobuf:
+Build STCPP:
+```
+$ make
+$ #test if programme works fine:
+$ ./transactionTest test
+
+$ #send transaction
+$ ./sendTransaction.sh
+```
+
+Clean STCPP:
+```
+$ make clean
+```
