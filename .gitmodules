@@ -10,3 +10,6 @@
 [submodule "cbor-cpp"]
 	path = cbor-cpp
 	url = https://github.com/naphaso/cbor-cpp.git
+[submodule "protobuf"]
+	path = protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
