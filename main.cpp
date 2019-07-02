@@ -221,7 +221,38 @@ void emptyBytes(unsigned char *data, int len)
     for (int i(0); i < len; ++i)
         data[i] = 0x00;
 }
+std::string ToHex(std::string s, bool upper_case = false)
+{
+    std::ostringstream ret;
 
+    for (std::string::size_type i = 0; i < s.length(); ++i)
+        ret << std::hex << std::setfill('0') << std::setw(2) << (upper_case ? std::uppercase : std::nouppercase) << (int)s[i];
+
+    return ret.str();
+}
+void buildAddress(std::string txnFamily, std::string entryName, unsigned char *ouput35bytes)
+{
+    //this address is used for intkey transaction processor
+    // Example: txnFamily="intkey", entryName="name"
+    //Doc: https://sawtooth.hyperledger.org/docs/core/releases/latest/app_developers_guide/address_and_namespace.html#address-components
+    emptyBytes(ouput35bytes, 32);
+    std::string txnFamily_hex_str = sha512Data(txnFamily);
+    unsigned char txnFamily_hex_char[6];
+    hexstrToUchar(txnFamily_hex_char, txnFamily_hex_str.c_str(), 6);
+    for (int i = 0; i < (6 / 2); i++)
+    {
+        ouput35bytes[i] = txnFamily_hex_char[i];
+    }
+    std::string entryName_hex_str = sha512Data(entryName);
+    entryName_hex_str = entryName_hex_str.substr(entryName_hex_str.size() - 64, entryName_hex_str.size());
+    unsigned char entryName_hex_char[64];
+    hexstrToUchar(entryName_hex_char, entryName_hex_str.c_str(), 64);
+    for (int i = 0; i < (64 / 2); i++)
+    {
+        ouput35bytes[3 + i] = entryName_hex_char[i];
+    }
+    //std::cerr << "Address:" << hexStr(ouput35bytes, 35) << std::endl;
+}
 //////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
@@ -360,6 +391,8 @@ int main(int argc, char **argv)
         std::string TxnNonce = hexStr(Transactionnonce, nonce_size);
 
         message_hash_str = sha512Data(message);
+        unsigned char address[35];
+        buildAddress("intkey", "name", address);
 
         //tool to convert into json and print the transaction proto:
         google::protobuf::util::JsonPrintOptions json_options;
@@ -377,8 +410,8 @@ int main(int argc, char **argv)
         myTransactionHeader.set_family_name("intkey");                                                            //the transaction familly to use
         myTransactionHeader.set_family_version("1.0");                                                            //familly version
         myTransactionHeader.set_payload_sha512(message_hash_str);                                                 //set a hash sha512 of the payload
-        myTransactionHeader.add_inputs("1cf1266e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7"); //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
-        myTransactionHeader.add_outputs("1cf1266e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7");
+        myTransactionHeader.add_inputs(hexStr(address, 35)); //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
+        myTransactionHeader.add_outputs(hexStr(address, 35));
         myTransactionHeader.set_nonce(TxnNonce); //set nonce of the transaction
         //done transaction header
         myTransaction->Clear();
