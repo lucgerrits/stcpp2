@@ -55,8 +55,8 @@ clean_rm_base64 = base64/*.o
 clean_rm_keys = *.key
 clean_rm_protos = protos_pb_h/*
 
-clean_cryptopp = ;cd cryptopp/ && make clean && cd -
-clean_secp256k1 = ;cd secp256k1/ && make clean && cd -
-clean_protobuf = ;cd protobuf/ && make clean && cd -
+clean_cryptopp = #;cd cryptopp/ && make clean && cd -
+clean_secp256k1 = #;cd secp256k1/ && make clean && cd -
+clean_protobuf = #;cd protobuf/ && make clean && cd -
 clean:
 	rm -r transaction *.out *.o $(clean_rm_cbor) $(clean_rm_keys) $(clean_rm_protos) $(clean_rm_base64) $(clean_cryptopp) $(clean_secp256k1)
