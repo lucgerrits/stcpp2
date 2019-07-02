@@ -35,7 +35,14 @@ $ #git submodule update --init --recursive
 $ ./autogen.sh
 $ ./configure
 $ make
-$ make check
+$ sudo make install
+```
+Install Secp256k1:
+```
+$ cd secp256k1/
+$ ./autogen.sh
+$ ./configure
+$ make
 $ sudo make install
 ```
 
