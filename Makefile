@@ -4,7 +4,7 @@ libs = -lprotobuf -lcurl -lsecp256k1 -Lsecp256k1/.libs/
 includes = -I protos_pb_h/ -I nlohmann/ -I . -I secp256k1/includes
 #######objects for main prog:
 transaction_objects = main.cpp
-transaction_objects += functions_secp256k1.o myconversions.o
+#transaction_objects += functions_secp256k1.o myconversions.o
 transaction_objects += cbor-cpp/src/encoder.o cbor-cpp/src/decoder.o cbor-cpp/src/output_dynamic.o cbor-cpp/src/input.o cbor-cpp/src/listener_debug.o
 transaction_objects += base64/base64.o
 transaction_objects += cryptopp/cryptlib.o
@@ -20,10 +20,10 @@ transaction: protos_pb_h/transaction.pb.h $(transaction_objects)
 	g++ $(flag_global) $(flag_main) -Wall -DNDEBUG $(proto_pb_c_files) $(transaction_objects) $(libs) $(includes) -o transaction ./cryptopp/libcryptopp.a
 
 #nos fonctions
-functions_secp256k1.o: functions_secp256k1.cpp functions_secp256k1.h cryptopp/cryptlib.o
-	g++ $(flag_global) -c -std=c++11 functions_secp256k1.cpp -o functions_secp256k1.o
-myconversions.o: myconversions.cpp myconversions.h cryptopp/cryptlib.o
-	g++ $(flag_global) -c -std=c++11 myconversions.cpp -o myconversions.o
+# functions_secp256k1.o: functions_secp256k1.cpp functions_secp256k1.h cryptopp/cryptlib.o
+# 	g++ $(flag_global) -c -std=c++11 functions_secp256k1.cpp -o functions_secp256k1.o
+# myconversions.o: myconversions.cpp myconversions.h cryptopp/cryptlib.o
+# 	g++ $(flag_global) -c -std=c++11 myconversions.cpp -o myconversions.o
 
 base64/base64.o: base64/base64.cpp base64/base64.h
 	g++ $(flag_global) -c base64/base64.cpp -o base64/base64.o
