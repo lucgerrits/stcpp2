@@ -37,6 +37,7 @@ $ ./configure
 $ make
 $ sudo make install
 ```
+
 Install Secp256k1:
 ```
 $ cd secp256k1/
