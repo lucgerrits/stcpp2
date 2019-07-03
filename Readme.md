@@ -71,6 +71,6 @@ $ sudo ldconfig
 ```
 
 
-### configure file
+### configure file
 
 This configure file is used in protobuf. It generates Makefiles that allow the use of *gproof* tools. 
