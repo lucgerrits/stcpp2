@@ -69,3 +69,8 @@ $ make clean
 $ ./transaction: error while loading shared libraries: libprotobuf.so.20: cannot open shared object file: No such file or directory
 $ sudo ldconfig
 ```
+
+
+### configure file
+
+This configure file is used in protobuf. It generates Makefiles that allow the use of *gproof* tools. 
