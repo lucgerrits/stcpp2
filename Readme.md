@@ -71,6 +71,38 @@ $ sudo ldconfig
 ```
 
 
-### configure file
+### Configure and Makefiles for gproof tools
 
-This configure file is used in protobuf. It generates Makefiles that allow the use of *gproof* tools. In configure_patch we can obtain the differences. 
+This directory contains modified configure files and Makefiles allowing the use of gproof tools. New install tools.
+
+Install cryptopp:
+$ cd ../Configure_Makefiles/cryptopp
+$ cp GNUmakefile ../../cryptopp
+$ make
+```
+
+Install Protobuf:
+```
+$ #git clone https://github.com/protocolbuffers/protobuf.git
+$ cd protobuf
+$ #git submodule update --init --recursive
+$ ./autogen.sh
+$ cd ../Configure_Makefiles/protobuf
+$ cp configure ../../protobuf
+$ chmod 755 configure
+$ ./configure
+$ make
+$ sudo make install
+```
+
+Install Secp256k1:
+```
+$ cd secp256k1/
+$ ./autogen.sh
+$ cd ../Configure_Makefiles/seckp256k1
+$ cp configure ../../seckp256k1
+$ chmod 755 configure
+$ ./configure
+$ make
+$ sudo make install
+```
