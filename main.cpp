@@ -147,7 +147,7 @@ parse(int argc, char *argv[])
 
 //https://stackoverflow.com/a/14051107/11697589
 //https://stackoverflow.com/questions/7639656/getting-a-buffer-into-a-stringstream-in-hex-representation/7639754#7639754
-std::string hexStr(unsigned char *data, int len) //bytes to string
+std::string UcharToHexStr(unsigned char *data, int len) //bytes to string
 {
     //this was first:
     // std::stringstream ss;
@@ -171,7 +171,7 @@ int chhex(char ch)
         return ch - 'a' + 10;
     return -1;
 }
-void hexstrToUchar(unsigned char *dest, const char *source, int bytes_n)
+void HexStrToUchar(unsigned char *dest, const char *source, int bytes_n)
 {
     for (bytes_n--; bytes_n >= 0; bytes_n--)
         dest[bytes_n] = 16 * chhex(source[bytes_n * 2]) + chhex(source[bytes_n * 2 + 1]);
@@ -235,10 +235,10 @@ void buildAddress(std::string txnFamily, std::string entryName, unsigned char *o
     //this address is used for intkey transaction processor
     // Example: txnFamily="intkey", entryName="name"
     //Doc: https://sawtooth.hyperledger.org/docs/core/releases/latest/app_developers_guide/address_and_namespace.html#address-components
-    emptyBytes(ouput35bytes, 32);
+    emptyBytes(ouput35bytes, 35);
     std::string txnFamily_hex_str = sha512Data(txnFamily);
     unsigned char txnFamily_hex_char[6];
-    hexstrToUchar(txnFamily_hex_char, txnFamily_hex_str.c_str(), 6);
+    HexStrToUchar(txnFamily_hex_char, txnFamily_hex_str.c_str(), 6);
     for (int i = 0; i < (6 / 2); i++)
     {
         ouput35bytes[i] = txnFamily_hex_char[i];
@@ -246,17 +246,17 @@ void buildAddress(std::string txnFamily, std::string entryName, unsigned char *o
     std::string entryName_hex_str = sha512Data(entryName);
     entryName_hex_str = entryName_hex_str.substr(entryName_hex_str.size() - 64, entryName_hex_str.size());
     unsigned char entryName_hex_char[64];
-    hexstrToUchar(entryName_hex_char, entryName_hex_str.c_str(), 64);
+    HexStrToUchar(entryName_hex_char, entryName_hex_str.c_str(), 64);
     for (int i = 0; i < (64 / 2); i++)
     {
         ouput35bytes[3 + i] = entryName_hex_char[i];
     }
-    //std::cerr << "Address:" << hexStr(ouput35bytes, 35) << std::endl;
+    //std::cerr << "Address:" << UcharToHexStr(ouput35bytes, 35) << std::endl;
 }
 //////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
-    parse(argc, argv);
+    parse(argc, argv);//parse command line arguments
 
     json payload;
     payload["Verb"] = intkey_cmd;
@@ -285,6 +285,7 @@ int main(int argc, char **argv)
     std::string signature_serilized_str = "";
     unsigned char signature_serilized[SIGNATURE_SERILIZED_SIZE];
 
+    //default keys:
     publicKey_str = PUBLIC_KEY;
     privateKey_str = PRIVATE_KEY;
     if (publicKey_str.length() > 0 && privateKey_str.length() > 0)
@@ -292,15 +293,15 @@ int main(int argc, char **argv)
         /* LOAD public keys */
         {
             unsigned char pubkey_char[PUBLIC_KEY_SERILIZED_SIZE];
-            hexstrToUchar(pubkey_char, publicKey_str.c_str(), (size_t)PUBLIC_KEY_SERILIZED_SIZE);
-            std::cerr << "Parse Public key:" << hexStr(pubkey_char, PUBLIC_KEY_SERILIZED_SIZE) << std::endl;
+            HexStrToUchar(pubkey_char, publicKey_str.c_str(), (size_t)PUBLIC_KEY_SERILIZED_SIZE);
+            std::cerr << "Parse Public key:" << UcharToHexStr(pubkey_char, PUBLIC_KEY_SERILIZED_SIZE) << std::endl;
             CHECK(SECP256K1_API::secp256k1_ec_pubkey_parse(ctx, &publicKey, pubkey_char, PUBLIC_KEY_SERILIZED_SIZE) == 1);
             std::cerr << "Ok." << std::endl;
         }
         /* LOAD private keys */
         {
-            hexstrToUchar(privateKey, privateKey_str.c_str(), (size_t)PRIVATE_KEY_SIZE);
-            std::cerr << "Parse private key:" << hexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
+            HexStrToUchar(privateKey, privateKey_str.c_str(), (size_t)PRIVATE_KEY_SIZE);
+            std::cerr << "Parse private key:" << UcharToHexStr(privateKey, PRIVATE_KEY_SIZE) << std::endl;
             CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
             std::cerr << "Ok." << std::endl;
         }
@@ -310,12 +311,12 @@ int main(int argc, char **argv)
         /* Generate a random key */
         {
             generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
-            privateKey_str = hexStr(privateKey, PRIVATE_KEY_SIZE);
+            privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
             std::cerr << "generatePrivateKey:" << privateKey_str << std::endl;
             while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
             {
                 generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
-                privateKey_str = hexStr(privateKey, PRIVATE_KEY_SIZE);
+                privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
                 std::cerr << "generatePrivateKey:" << privateKey_str << std::endl;
             }
             CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
@@ -327,7 +328,7 @@ int main(int argc, char **argv)
             //FAILING:Segmentation fault
             CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
             std::cerr << "Public key verified." << std::endl;
-            std::cerr << "->Using:" << hexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
+            std::cerr << "->Using:" << UcharToHexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
         }
 
         /* Serilize public key */
@@ -335,7 +336,7 @@ int main(int argc, char **argv)
             publicKey_serilized_len = (size_t)PUBLIC_KEY_SERILIZED_SIZE;
             emptyBytes(publicKey_serilized, publicKey_serilized_len);
             CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &publicKey_serilized_len, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
-            publicKey_str = hexStr(publicKey_serilized, publicKey_serilized_len);
+            publicKey_str = UcharToHexStr(publicKey_serilized, publicKey_serilized_len);
             std::cerr << "Public key serilized ok." << std::endl;
             std::cerr << "->Using:" << publicKey_str << std::endl;
         }
@@ -350,7 +351,6 @@ int main(int argc, char **argv)
             std::cerr << "Message test is ok." << std::endl;
             //std::cerr << "->Using:" << message << std::endl;
             message_hash_str = sha256Data(message);
-            hexstrToUchar(message_hash_char, message_hash_str.c_str(), (size_t)HASH_SHA256_SIZE);
             CHECK(message_hash_str == "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08");
             std::cerr << "SHA256 test is ok." << std::endl;
             //std::cerr << "->MSG SHA256:" << message_hash_str << std::endl;
@@ -358,13 +358,14 @@ int main(int argc, char **argv)
 
         /* Signing */
         {
+            HexStrToUchar(message_hash_char, message_hash_str.c_str(), (size_t)HASH_SHA256_SIZE);
             CHECK(SECP256K1_API::secp256k1_ecdsa_sign(ctx, &signature, message_hash_char, privateKey, NULL, NULL) == 1);
             std::cerr << "Signing test is ok." << std::endl;
         }
         /* Serilize signature compact version*/
         {
             CHECK(SECP256K1_API::secp256k1_ecdsa_signature_serialize_compact(ctx, signature_serilized, &signature) == 1);
-            signature_serilized_str = hexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
+            signature_serilized_str = UcharToHexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
             CHECK(signature_serilized_str == "fee5963f29f6fe97ec6fade68556cfe7289d3ebef3b9edf87aadfd3e95cba2100e1cb495f42f4ca50f939322d9a3e7ca04bb9f8fe21d9175bc8a3dd83c885dbf");
             std::cerr << "Serilize signature compact is ok." << std::endl;
             // std::cerr << "->Signature:" << signature_serilized_str << std::endl;
@@ -388,12 +389,12 @@ int main(int argc, char **argv)
         size_t nonce_size = 10;
         unsigned char Transactionnonce[nonce_size];
         generateRandomBytes(Transactionnonce, nonce_size);
-        std::string TxnNonce = hexStr(Transactionnonce, nonce_size);
+        std::string TxnNonce = UcharToHexStr(Transactionnonce, nonce_size);
 
         message_hash_str = sha512Data(message);
         unsigned char address[35];
         buildAddress("intkey", "name", address);
-
+        std::string address_str = UcharToHexStr(address, 35);
         //tool to convert into json and print the transaction proto:
         /*google::protobuf::util::JsonPrintOptions json_options;
         json_options.add_whitespace = true;
@@ -410,8 +411,8 @@ int main(int argc, char **argv)
         myTransactionHeader.set_family_name("intkey");                                                            //the transaction familly to use
         myTransactionHeader.set_family_version("1.0");                                                            //familly version
         myTransactionHeader.set_payload_sha512(message_hash_str);                                                 //set a hash sha512 of the payload
-        myTransactionHeader.add_inputs(hexStr(address, 35)); //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
-        myTransactionHeader.add_outputs(hexStr(address, 35));
+        myTransactionHeader.add_inputs(address_str); //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
+        myTransactionHeader.add_outputs(address_str);
         myTransactionHeader.set_nonce(TxnNonce); //set nonce of the transaction
         //done transaction header
         myTransaction->Clear();
@@ -422,10 +423,10 @@ int main(int argc, char **argv)
 
         std::cerr << "Signing transaction header..." << std::endl;
         message_hash_str = sha256Data(myTransactionHeader_string);
-        hexstrToUchar(message_hash_char, message_hash_str.c_str(), (size_t)HASH_SHA256_SIZE);
+        HexStrToUchar(message_hash_char, message_hash_str.c_str(), (size_t)HASH_SHA256_SIZE);
         CHECK(SECP256K1_API::secp256k1_ecdsa_sign(ctx, &signature, message_hash_char, privateKey, NULL, NULL) == 1); //make signature
         CHECK(SECP256K1_API::secp256k1_ecdsa_signature_serialize_compact(ctx, signature_serilized, &signature) == 1);
-        signature_serilized_str = hexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
+        signature_serilized_str = UcharToHexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
         myTransaction->set_header_signature(signature_serilized_str); //set header signature
 
         //done transaction
@@ -443,10 +444,10 @@ int main(int argc, char **argv)
 
         std::cerr << "Signing batch header..." << std::endl;
         message_hash_str = sha256Data(myBatchHeader_string);
-        hexstrToUchar(message_hash_char, message_hash_str.c_str(), (size_t)HASH_SHA256_SIZE);
+        HexStrToUchar(message_hash_char, message_hash_str.c_str(), (size_t)HASH_SHA256_SIZE);
         CHECK(SECP256K1_API::secp256k1_ecdsa_sign(ctx, &signature, message_hash_char, privateKey, NULL, NULL) == 1); //make signature
         CHECK(SECP256K1_API::secp256k1_ecdsa_signature_serialize_compact(ctx, signature_serilized, &signature) == 1);
-        signature_serilized_str = hexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
+        signature_serilized_str = UcharToHexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
 
         myBatch->set_header_signature(signature_serilized_str);
 
