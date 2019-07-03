@@ -11,7 +11,7 @@ This will later on:
 #include <iomanip>
 #include <stdio.h>
 #include "base64/base64.h"
-#include <curl/curl.h>
+//#include <curl/curl.h>
 #include <assert.h>
 #include <string>
 #include <sys/stat.h>
@@ -76,7 +76,7 @@ using CryptoPP::StringSink;
 using CryptoPP::StringSource;
 //////////////////////////////////////////////////////////////////
 //protobuf
-#include "google/protobuf/util/json_util.h"
+//#include "protobuf/src/google/protobuf/util/json_util.h"
 #include "protos_pb_h/transaction.pb.h"
 #include "protos_pb_h/batch.pb.h"
 //////////////////////////////////////////////////////////////////
@@ -395,11 +395,11 @@ int main(int argc, char **argv)
         buildAddress("intkey", "name", address);
 
         //tool to convert into json and print the transaction proto:
-        google::protobuf::util::JsonPrintOptions json_options;
+        /*google::protobuf::util::JsonPrintOptions json_options;
         json_options.add_whitespace = true;
         json_options.always_print_primitive_fields = true;
         json_options.always_print_enums_as_ints = true;
-        json_options.preserve_proto_field_names = true;
+        json_options.preserve_proto_field_names = true;*/
 
         //first build transaction
         //& add all necessary data to protos messages
