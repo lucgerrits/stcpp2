@@ -76,6 +76,7 @@ $ sudo ldconfig
 This directory contains modified configure files and Makefiles allowing the use of gproof tools. New install tools.
 
 Install cryptopp:
+```
 $ cd ../Configure_Makefiles/cryptopp
 $ cp GNUmakefile ../../cryptopp
 $ make
@@ -96,6 +97,7 @@ $ sudo make install
 ```
 
 Install Secp256k1:
+
 ```
 $ cd secp256k1/
 $ ./autogen.sh
