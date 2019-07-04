@@ -24,7 +24,7 @@ Required:
 
 
 ```
-$ sudo apt-get install git curl autoconf automake libtool curl make g++ unzip
+$ sudo apt-get install git curl autoconf automake libtool curl make g++ unzip libcurl4-openssl-dev
 ```
 
 Install Protobuf:
