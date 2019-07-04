@@ -33,8 +33,10 @@ $ #git clone https://github.com/protocolbuffers/protobuf.git
 $ cd protobuf
 $ #git submodule update --init --recursive
 $ ./autogen.sh
+$ #prefix will make Protobuf install locally:
 $ ./configure --prefix=$(pwd)/.libs/ --disable-shared
 $ make
+$ make install
 ```
 
 Install Secp256k1:
