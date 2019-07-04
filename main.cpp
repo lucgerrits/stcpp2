@@ -11,7 +11,7 @@ This will later on:
 #include <iomanip>
 #include <stdio.h>
 #include "base64/base64.h"
-//#include <curl/curl.h>
+#include <curl/curl.h>
 #include <assert.h>
 #include <string>
 #include <sys/stat.h>
@@ -76,7 +76,7 @@ using CryptoPP::StringSink;
 using CryptoPP::StringSource;
 //////////////////////////////////////////////////////////////////
 //protobuf
-//#include "protobuf/src/google/protobuf/util/json_util.h"
+#include "protobuf/.libs/include/google/protobuf/util/json_util.h"
 #include "protos_pb_h/transaction.pb.h"
 #include "protos_pb_h/batch.pb.h"
 //////////////////////////////////////////////////////////////////
@@ -89,6 +89,7 @@ std::string mode = "normal";
 std::string intkey_cmd = "set";
 std::string intkey_key = "foo";
 int intkey_value = 42;
+std::string batch_api_endpoint = "";
 
 //////////////////////////////////////////////////////////////////
 //Functions:
@@ -107,7 +108,7 @@ parse(int argc, char *argv[])
         options
             .allow_unrecognised_options()
             .add_options()("t,test", "Test the program")
-            //("url", "Sawtooth REST API endpoint", cxxopts::value<std::string>())
+            ("url", "Sawtooth REST API endpoint", cxxopts::value<std::string>())
             ("c,cmd", "Inkey CMD: set, dec or inc", cxxopts::value<std::string>())
             //Inkey key
             ("k,key", "Inkey key: set, dec or inc", cxxopts::value<std::string>())
@@ -136,6 +137,11 @@ parse(int argc, char *argv[])
             //go for test mode
             intkey_value = result["value"].as<int>();
         }
+        if(result.count("url"))
+        {
+            batch_api_endpoint = result["url"].as<std::string>();//"http://10.212.104.144:8021/batches"
+        }
+
         return result;
     }
     catch (const cxxopts::OptionException &e)
@@ -253,10 +259,17 @@ void buildAddress(std::string txnFamily, std::string entryName, unsigned char *o
     }
     //std::cerr << "Address:" << UcharToHexStr(ouput35bytes, 35) << std::endl;
 }
+
+static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    ((std::string *)userp)->append((char *)contents, size * nmemb);
+    return size * nmemb;
+}
+
 //////////////////////////////////////////////////////////////////
 int main(int argc, char **argv)
 {
-    parse(argc, argv);//parse command line arguments
+    parse(argc, argv); //parse command line arguments
 
     json payload;
     payload["Verb"] = intkey_cmd;
@@ -393,8 +406,14 @@ int main(int argc, char **argv)
 
         message_hash_str = sha512Data(message);
         unsigned char address[35];
-        buildAddress("intkey", "name", address);
-        std::string address_str = UcharToHexStr(address, 35);
+        buildAddress("intkey", intkey_key, address);
+        const std::string address_str = UcharToHexStr(address, 35);
+        std::cerr << "address_str1:" << address_str << std::endl;
+
+        // buildAddress("intKey", "name", address);
+        // address_str = UcharToHexStr(address, 35);
+        // std::cerr << "address_str:" << address_str << std::endl;
+
         //tool to convert into json and print the transaction proto:
         /*google::protobuf::util::JsonPrintOptions json_options;
         json_options.add_whitespace = true;
@@ -406,12 +425,12 @@ int main(int argc, char **argv)
         //& add all necessary data to protos messages
         std::cerr << "Setting transaction header..." << std::endl;
         myTransactionHeader.Clear();
-        myTransactionHeader.set_batcher_public_key(publicKey_str);                                                //set batcher pubkey
-        myTransactionHeader.set_signer_public_key(publicKey_str);                                                 //set signer pubkey
-        myTransactionHeader.set_family_name("intkey");                                                            //the transaction familly to use
-        myTransactionHeader.set_family_version("1.0");                                                            //familly version
-        myTransactionHeader.set_payload_sha512(message_hash_str);                                                 //set a hash sha512 of the payload
-        myTransactionHeader.add_inputs(address_str); //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
+        myTransactionHeader.set_batcher_public_key(publicKey_str); //set batcher pubkey
+        myTransactionHeader.set_signer_public_key(publicKey_str);  //set signer pubkey
+        myTransactionHeader.set_family_name("intkey");             //the transaction familly to use
+        myTransactionHeader.set_family_version("1.0");             //familly version
+        myTransactionHeader.set_payload_sha512(message_hash_str);  //set a hash sha512 of the payload
+        myTransactionHeader.add_inputs(address_str);               //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
         myTransactionHeader.add_outputs(address_str);
         myTransactionHeader.set_nonce(TxnNonce); //set nonce of the transaction
         //done transaction header
@@ -454,8 +473,40 @@ int main(int argc, char **argv)
         std::cerr << "***Done build real transaction***" << std::endl;
 
         std::cerr << "Sending batch list to stdout..." << std::endl;
-        myBatchList.SerializePartialToOstream(&std::cout);
+        //myBatchList.SerializePartialToOstream(&std::cout);
         std::cerr << std::endl;
+
+        //send transaction
+
+        std::string batch_string = myBatchList.SerializePartialAsString();
+        CURL *curl;
+        CURLcode res;
+        struct curl_slist *headers = NULL;
+        std::string readBuffer;
+        curl = curl_easy_init();
+        if (curl && strcmp(batch_api_endpoint.c_str(), "") != 0)
+        {
+
+            curl_easy_setopt(curl, CURLOPT_URL, batch_api_endpoint.c_str());
+            headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+            //curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, batch_string.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
+
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+            //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+            res = curl_easy_perform(curl);
+            curl_easy_cleanup(curl);
+
+            std::cout << "***Transaction sended***" << std::endl;
+            std::cout << "STATUS CODE:" << res << std::endl;
+            std::cout << readBuffer << std::endl;
+        }
+        curl_global_cleanup();
     }
 
     return 0;

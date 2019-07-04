@@ -24,7 +24,7 @@ Required:
 
 
 ```
-$ sudo apt-get install git curl autoconf automake libtool curl make g++ unzip
+$ sudo apt-get install git curl autoconf automake libtool curl make g++ unzip libcurl4-openssl-dev
 ```
 
 Install Protobuf:
@@ -33,9 +33,10 @@ $ #git clone https://github.com/protocolbuffers/protobuf.git
 $ cd protobuf
 $ #git submodule update --init --recursive
 $ ./autogen.sh
-$ ./configure
+$ #prefix will make Protobuf install locally:
+$ ./configure --prefix=$(pwd)/.libs/ --disable-shared
 $ make
-$ sudo make install
+$ make install
 ```
 
 Install Secp256k1:
@@ -44,7 +45,6 @@ $ cd secp256k1/
 $ ./autogen.sh
 $ ./configure
 $ make
-$ sudo make install
 ```
 
 ### Build STCPP:

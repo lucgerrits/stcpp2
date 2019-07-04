@@ -15,7 +15,7 @@ transaction_objects += base64/base64.o
 transaction_objects += cryptopp/cryptlib.o
 # transaction_objects += secp256k1/.libs/libsecp256k1.a
 #some flags
-flag_global = -pg 
+flag_global = -pg
 flag_main = -pg -std=c++11 -pthread
 #info about how cryptopp needs to compile:
 #https://www.cryptopp.com/wiki/GNUmakefile#Compilers_and_C.2B.2B_Runtimes
@@ -48,15 +48,18 @@ cbor-cpp/src/output_dynamic.o: cbor-cpp/src/output_dynamic.cpp cbor-cpp/src/outp
 protos_pb_h/transaction.pb.h: protos/transaction.proto
 	mkdir -p protos_pb_h &&  ./protobuf/src/protoc --proto_path=protos --cpp_out=protos_pb_h/ protos/*.proto
 
-
+libsecp256k1.a: secp256k1/.libs/libsecp256k1.a
+		cp secp256k1/.libs/libsecp256k1.a .
+		
 #cleanup...
 clean_rm_cbor = cbor-cpp/src/*.o
 clean_rm_base64 = base64/*.o
 clean_rm_keys = *.key
 clean_rm_protos = protos_pb_h/*
+clean_rm_libsecp256k1 = libsecp256k1.a
 
 clean_cryptopp = #;cd cryptopp/ && make clean && cd -
 clean_secp256k1 = #;cd secp256k1/ && make clean && cd -
 clean_protobuf = #;cd protobuf/ && make clean && cd -
 clean:
-	rm -rf transaction *.out *.o $(clean_rm_cbor) $(clean_rm_keys) $(clean_rm_protos) $(clean_rm_base64) $(clean_cryptopp) $(clean_secp256k1)
+	rm -r transaction *.out *.o $(clean_rm_libsecp256k1) $(clean_rm_cbor) $(clean_rm_keys) $(clean_rm_protos) $(clean_rm_base64) $(clean_cryptopp) $(clean_secp256k1)
