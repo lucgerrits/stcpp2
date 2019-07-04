@@ -1,7 +1,7 @@
 
 proto_pb_c_files = protos_pb_h/transaction.pb.cc protos_pb_h/batch.pb.cc
-libs = -lprotobuf -lcurl -lsecp256k1 -Lsecp256k1/.libs/
-includes = -I protos_pb_h/ -I nlohmann/ -I . -I secp256k1/includes
+libs = -lprotobuf -Lprotobuf/.libs/lib -lcurl -lsecp256k1 -Lsecp256k1/.libs/
+includes = -I protos_pb_h/ -I nlohmann/ -I . -I secp256k1/includes -Iprotobuf/.libs/include
 #######objects for main prog:
 transaction_objects = main.cpp
 #transaction_objects += functions_secp256k1.o myconversions.o
@@ -41,7 +41,7 @@ cbor-cpp/src/output_dynamic.o: cbor-cpp/src/output_dynamic.cpp cbor-cpp/src/outp
 	g++ $(flag_global) -c cbor-cpp/src/output_dynamic.cpp -I cbor-cpp/src/ -o cbor-cpp/src/output_dynamic.o
 
 protos_pb_h/transaction.pb.h: protos/transaction.proto
-	mkdir -p protos_pb_h &&  ./protobuf/src/protoc --proto_path=protos --cpp_out=protos_pb_h/ protos/*
+	mkdir -p protos_pb_h &&  ./protobuf/.libs/bin/protoc --proto_path=protos --cpp_out=protos_pb_h/ protos/*
 
 cryptopp/cryptlib.o: cryptopp/cryptlib.h cryptopp/cryptlib.cpp
 	cd cryptopp && make && cd -

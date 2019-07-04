@@ -76,7 +76,7 @@ using CryptoPP::StringSink;
 using CryptoPP::StringSource;
 //////////////////////////////////////////////////////////////////
 //protobuf
-#include "google/protobuf/util/json_util.h"
+#include "protobuf/.libs/include/google/protobuf/util/json_util.h"
 #include "protos_pb_h/transaction.pb.h"
 #include "protos_pb_h/batch.pb.h"
 //////////////////////////////////////////////////////////////////

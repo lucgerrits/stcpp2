@@ -33,9 +33,8 @@ $ #git clone https://github.com/protocolbuffers/protobuf.git
 $ cd protobuf
 $ #git submodule update --init --recursive
 $ ./autogen.sh
-$ ./configure
+$ ./configure --prefix=$(pwd)/.libs/ --disable-shared
 $ make
-$ sudo make install
 ```
 
 Install Secp256k1:
@@ -44,7 +43,6 @@ $ cd secp256k1/
 $ ./autogen.sh
 $ ./configure
 $ make
-$ sudo make install
 ```
 
 ### Build STCPP:
