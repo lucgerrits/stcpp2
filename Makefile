@@ -1,9 +1,11 @@
 
 proto_pb_c_files = protos_pb_h/transaction.pb.cc protos_pb_h/batch.pb.cc
-#libs = -lprotobuf -lcurl -lsecp256k1 -Lsecp256k1/.libs/
+libs = -lcurl
 
-libs = -Lsecp256k1/.libs/ -lsecp256k1
-libs += -Lprotobuf/src/.libs/ -lprotobuf
+libs += -L. -lsecp256k1
+libs += -Lprotobuf/.libs/lib -lprotobuf
+libs += -Lprotobuf/.libs/lib -lprotoc
+
 libs += -Lcryptopp -lcryptopp
 
 includes = -I protos_pb_h/ -I nlohmann/ -I . -I secp256k1/includes
@@ -21,7 +23,7 @@ flag_main = -pg -std=c++11 -pthread
 #https://www.cryptopp.com/wiki/GNUmakefile#Compilers_and_C.2B.2B_Runtimes
 
 #notre program
-transaction: protos_pb_h/transaction.pb.h $(transaction_objects)
+transaction: protos_pb_h/transaction.pb.h $(transaction_objects) copy_secp256k1
 	g++  $(flag_main) -Wall -DNDEBUG $(proto_pb_c_files) $(transaction_objects) $(libs) $(includes) -o transaction
 
 #nos fonctions
@@ -48,13 +50,16 @@ cbor-cpp/src/output_dynamic.o: cbor-cpp/src/output_dynamic.cpp cbor-cpp/src/outp
 protos_pb_h/transaction.pb.h: protos/transaction.proto
 	mkdir -p protos_pb_h &&  ./protobuf/src/protoc --proto_path=protos --cpp_out=protos_pb_h/ protos/*.proto
 
-libsecp256k1.a: secp256k1/.libs/libsecp256k1.a
-		cp secp256k1/.libs/libsecp256k1.a .
+copy_secp256k1:
+	cp secp256k1/.libs/libsecp256k1.a .
+
+#libsecp256k1.a: 
+#		cp secp256k1/.libs/libsecp256k1.a .
 		
 #cleanup...
 clean_rm_cbor = cbor-cpp/src/*.o
-clean_rm_base64 = base64/*.o
-clean_rm_keys = *.key
+#clean_rm_base64 = base64/*.o
+#clean_rm_keys = *.key
 clean_rm_protos = protos_pb_h/*
 clean_rm_libsecp256k1 = libsecp256k1.a
 

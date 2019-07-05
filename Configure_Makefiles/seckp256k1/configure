@@ -13801,6 +13801,7 @@ fi
 esac
 
 CFLAGS="$CFLAGS -W -pg"
+CPPFLAGS="$CPPFLAGS -pg"
 
 warn_CFLAGS="-std=c89 -pedantic -Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes -Wno-unused-function -Wno-long-long -Wno-overlength-strings"
 saved_CFLAGS="$CFLAGS"
@@ -14062,6 +14063,7 @@ fi
 
 
   CFLAGS_FOR_BUILD="$CFLAGS"
+  CPPFLAGS_FOR_BUILD="$CPPFLAGS -pg"
 
   # Restore the environment
   cross_compiling=$save_cross_compiling
