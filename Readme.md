@@ -80,6 +80,7 @@ Install cryptopp:
 $ cd cryptopp
 $ cd ../Configure_Makefiles/cryptopp
 $ cp GNUmakefile ../../cryptopp
+$ cd ../../cryptopp
 $ make
 ```
 
