@@ -77,6 +77,7 @@ This directory contains modified configure files and Makefiles allowing the use 
 
 Install cryptopp:
 ```
+$ cd cryptopp
 $ cd ../Configure_Makefiles/cryptopp
 $ cp GNUmakefile ../../cryptopp
 $ make
