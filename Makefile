@@ -1,14 +1,12 @@
 
-proto_pb_c_files = protos_pb_h/transaction.pb.cc protos_pb_h/batch.pb.cc
+proto_pb_c_files = protos_pb_h/transaction.pb.cc protos_pb_h/batch.pb.cc protos_pb_h/seth.pb.cc
 libs = -Lprotobuf/.libs/lib -lprotobuf -lcurl -L. -lsecp256k1
 includes = -I protos_pb_h/ -I nlohmann/ -I . -I secp256k1/includes -Iprotobuf/.libs/include
 #######objects for main prog:
 transaction_objects = main.cpp
-#transaction_objects += functions_secp256k1.o myconversions.o
 transaction_objects += cbor-cpp/src/encoder.o cbor-cpp/src/decoder.o cbor-cpp/src/output_dynamic.o cbor-cpp/src/input.o cbor-cpp/src/listener_debug.o
-transaction_objects += base64/base64.o
 transaction_objects += cryptopp/cryptlib.o
-# transaction_objects += secp256k1/.libs/libsecp256k1.a
+transaction_objects += common.o
 #some flags
 flag_global = -pg -std=c++11
 flag_main = -pthread -std=c++11
@@ -19,14 +17,8 @@ flag_main = -pthread -std=c++11
 transaction: protos_pb_h/transaction.pb.h $(transaction_objects) libsecp256k1.a
 	g++ $(flag_global) $(flag_main) -Wall -DNDEBUG $(proto_pb_c_files) $(transaction_objects) $(libs) $(includes) -o transaction ./cryptopp/libcryptopp.a
 
-#nos fonctions
-# functions_secp256k1.o: functions_secp256k1.cpp functions_secp256k1.h cryptopp/cryptlib.o
-# 	g++ $(flag_global) -c -std=c++11 functions_secp256k1.cpp -o functions_secp256k1.o
-# myconversions.o: myconversions.cpp myconversions.h cryptopp/cryptlib.o
-# 	g++ $(flag_global) -c -std=c++11 myconversions.cpp -o myconversions.o
-
-base64/base64.o: base64/base64.cpp base64/base64.h
-	g++ $(flag_global) -c base64/base64.cpp -o base64/base64.o
+common.o: common.cpp common.h
+	g++ $(flag_global) $(libs) $(includes) -c common.cpp -o common.o
 
 #cbor stuff:
 cbor-cpp/src/encoder.o: cbor-cpp/src/encoder.cpp cbor-cpp/src/encoder.h
@@ -51,7 +43,6 @@ libsecp256k1.a: secp256k1/.libs/libsecp256k1.a
 
 #cleanup...
 clean_rm_cbor = cbor-cpp/src/*.o
-clean_rm_base64 = base64/*.o
 clean_rm_keys = *.key
 clean_rm_protos = protos_pb_h/*
 clean_rm_libsecp256k1 = libsecp256k1.a
@@ -60,4 +51,4 @@ clean_cryptopp = #;cd cryptopp/ && make clean && cd -
 clean_secp256k1 = #;cd secp256k1/ && make clean && cd -
 clean_protobuf = #;cd protobuf/ && make clean && cd -
 clean:
-	rm -r transaction *.out *.o $(clean_rm_libsecp256k1) $(clean_rm_cbor) $(clean_rm_keys) $(clean_rm_protos) $(clean_rm_base64) $(clean_cryptopp) $(clean_secp256k1)
+	rm -r transaction *.out *.o $(clean_rm_libsecp256k1) $(clean_rm_cbor) $(clean_rm_keys) $(clean_rm_protos) $(clean_cryptopp) $(clean_secp256k1)
