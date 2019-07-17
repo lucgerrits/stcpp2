@@ -92,6 +92,7 @@ $ #git submodule update --init --recursive
 $ ./autogen.sh
 $ cd ../Configure_Makefiles/protobuf
 $ cp configure ../../protobuf
+$ cd ../../protobuf
 $ chmod 755 configure
 $ ./configure
 $ make
@@ -105,6 +106,7 @@ $ cd secp256k1/
 $ ./autogen.sh
 $ cd ../Configure_Makefiles/seckp256k1
 $ cp configure ../../seckp256k1
+$ cd ../../secp256k1
 $ chmod 755 configure
 $ ./configure
 $ make
