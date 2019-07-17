@@ -34,6 +34,8 @@ bool isverbose = false;
 std::string arg_command = "";
 std::string arg_key = "";
 std::string arg_owner = "";
+std::string arg_owner_pic = "";
+size_t picture_buffer_size = MAX_PICTURE_BUFFER_SIZE;
 int arg_value = -1;
 std::string batch_api_endpoint = "";
 
@@ -54,31 +56,46 @@ parse(int argc, char *argv[])
         options
             .allow_unrecognised_options()
             .add_options()
+            //Common options
             //help
             ("help", "Print help")
             // mode
-            ("mode", "Mode: test, intkey or eth", cxxopts::value<std::string>())
+            ("mode", "Mode: test, intkey, cartp or eth", cxxopts::value<std::string>())
             // url endpoint
             ("url", "Sawtooth REST API endpoint.", cxxopts::value<std::string>()) //Is different for eth ?
-            //Inkey command
-            ("cmd", "Inkey CMD: set, dec or inc. Cartp: set_owner", cxxopts::value<std::string>())
+            //Command for transaction processor
+            ("cmd", "Command used. For Inkey are: set, dec or inc. For cartp: set_owner", cxxopts::value<std::string>())
+            //
+            ;
+
+        options.add_options("Inkey")
+            //Inkey
             //Inkey key
             ("key", "Inkey key", cxxopts::value<std::string>())
             //Inkey value
-            ("value", "Inkey value", cxxopts::value<int>())
+            ("value", "Inkey value", cxxopts::value<int>());
+
+        options.add_options("Cartp")
+            //Cartp
             //cartp owner
-            ("owner", "cartp owner", cxxopts::value<std::string>())
+            ("owner", "Car owner", cxxopts::value<std::string>())
+            //cartp owner picture
+            ("owner_pic", "Car owner picture", cxxopts::value<std::string>())
+            //cartp owner picture size no limit
+            ("disable_owner_pic_size", "Disable car owner picture size");
+
+        options.add_options("Ethereum")
             //eth create account
             ("create", "Create Ethereum account", cxxopts::value<std::string>());
 
-        options.add_options("Group")("v,verbose", "verbose");
+        options.add_options("Other")("v,verbose", "verbose");
         options.parse_positional({"input", "output", "positional"});
 
         auto result = options.parse(argc, argv);
 
         if (result.count("help"))
         {
-            std::cout << options.help({"", "Group"}) << std::endl;
+            std::cout << options.help({"", "Inkey", "Cartp", "Other"}) << std::endl;
             exit(0);
         }
         if (result.count("mode"))
@@ -107,6 +124,14 @@ parse(int argc, char *argv[])
         if (result.count("owner"))
         {
             arg_owner = result["owner"].as<std::string>();
+        }
+        if (result.count("owner_pic"))
+        {
+            arg_owner_pic = result["owner_pic"].as<std::string>();
+        }
+        if (result.count("disable_owner_pic_size"))
+        {
+            picture_buffer_size = std::numeric_limits<std::size_t>::max();
         }
         if (result.count("create"))
         {
@@ -245,7 +270,7 @@ int main(int argc, char **argv)
         myTransactionHeader.Clear();
         myTransactionHeader.set_batcher_public_key(publicKey_str); //set batcher pubkey
         myTransactionHeader.set_signer_public_key(publicKey_str);  //set signer pubkey
-        myTransactionHeader.set_family_name(tp_family);             //the transaction familly to use
+        myTransactionHeader.set_family_name(tp_family);            //the transaction familly to use
         myTransactionHeader.set_family_version("1.0");             //familly version
         myTransactionHeader.set_payload_sha512(message_hash_str);  //set a hash sha512 of the payload
         myTransactionHeader.add_inputs(address_str);               //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
@@ -314,16 +339,47 @@ int main(int argc, char **argv)
         std::string tp_family = "cartp";
         if (isverbose)
             std::cout << "***Start build transaction***" << std::endl;
-        if (!strcmp(arg_command.c_str(), "") || !strcmp(arg_command.c_str(), "") || !strcmp(arg_owner.c_str(), ""))
+        if (!strcmp(arg_command.c_str(), "") || !strcmp(arg_owner_pic.c_str(), "") || !strcmp(arg_owner.c_str(), ""))
         {
-            std::cout << "ERROR: owner, car_id and cmd is required." << std::endl;
+            std::cout << "ERROR: owner, owner_pic and cmd is required." << std::endl;
             exit(0);
         }
-        arg_key = PUBLIC_KEY;
+        //arg_key = PUBLIC_KEY;
+        if (isverbose)
+            std::cout << "Setting transaction payload..." << std::endl;
         json payload;
         payload["tnx_cmd"] = arg_command;
-        payload["car_id"] = arg_key;
+        payload["car_id"] = PUBLIC_KEY;
         payload["owner"] = arg_owner;
+
+        //load file to Uchar
+        //mix of hacks from :
+        //https://stackoverflow.com/a/36658802
+        //& https://stackoverflow.com/a/604438
+        std::ifstream infile;
+        infile.open(arg_owner_pic);
+        unsigned char buffer[picture_buffer_size]; //buffer file size limit
+        //get length of file
+        infile.seekg(0, infile.end);
+        size_t file_bytes_length = infile.tellg();
+        infile.seekg(0, infile.beg);
+        // don't overflow the buffer!
+        if (file_bytes_length > picture_buffer_size)
+        {
+            std::cout << "ERROR: picture size (=" << file_bytes_length << ") is too big. Max buffer size = " << picture_buffer_size << std::endl;
+            exit(0);
+        }
+        //read file
+        if (isverbose)
+            std::cout << "Reading file :" << arg_owner_pic << std::endl;
+        infile.read((char *)(&buffer[0]), file_bytes_length);
+
+        //exit(0);
+        payload["owner_picture"] = UcharToHexStr(buffer, file_bytes_length);
+        payload["owner_picture_ext"] = arg_owner_pic.substr(arg_owner_pic.find_last_of(".") + 1);//".png";
+
+        if (isverbose)
+            std::cout << "Encoding transaction payload..." << std::endl;
         std::vector<uint8_t> payload_vect = json::to_cbor(payload);
         std::string payload_str(payload_vect.begin(), payload_vect.end());
         message = payload_str;
@@ -345,7 +401,7 @@ int main(int argc, char **argv)
 
         message_hash_str = sha512Data(message);
         unsigned char address[35];
-        buildAddress(tp_family, arg_key, address);
+        buildAddress(tp_family, payload["car_id"], address);
         const std::string address_str = UcharToHexStr(address, 35);
         if (isverbose)
             std::cout << "address used:" << address_str << std::endl;
@@ -368,7 +424,7 @@ int main(int argc, char **argv)
         myTransactionHeader.Clear();
         myTransactionHeader.set_batcher_public_key(publicKey_str); //set batcher pubkey
         myTransactionHeader.set_signer_public_key(publicKey_str);  //set signer pubkey
-        myTransactionHeader.set_family_name(tp_family);             //the transaction familly to use
+        myTransactionHeader.set_family_name(tp_family);            //the transaction familly to use
         myTransactionHeader.set_family_version("1.0");             //familly version
         myTransactionHeader.set_payload_sha512(message_hash_str);  //set a hash sha512 of the payload
         myTransactionHeader.add_inputs(address_str);               //1cf126cc488cca4cc3565a876f6040f8b73a7b92475be1d0b1bc453f6140fba7183b9a
@@ -457,13 +513,11 @@ int main(int argc, char **argv)
 
                 SethTransaction mySethTransaction;
                 mySethTransaction.set_transaction_type(SethTransaction_TransactionType_CREATE_EXTERNAL_ACCOUNT);
-                CreateExternalAccountTxn  myExternalAccount = mySethTransaction.create_external_account();
+                CreateExternalAccountTxn myExternalAccount = mySethTransaction.create_external_account();
                 myExternalAccount.set_to("");
 
                 //newAcctAddr
                 std::string EvmAddr = "";
-                
-
             }
         }
         else if (!strcmp(arg_mode.c_str(), "other eth mode"))
