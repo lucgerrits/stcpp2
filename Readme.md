@@ -112,3 +112,16 @@ $ ./configure
 $ make
 $ sudo make install
 ```
+
+Install curl:
+```
+$ cd ..
+$ git clone https://github.com/curl/curl.git
+$ cd curl 
+$ ./buildconf
+$ ./configure --without-ssl --disable-shared --disable-versioned-symbols --without-zlib
+$ make
+$ cd lib/.libs
+$ cp libcurl.a ../../../stcpp2
+
+```
