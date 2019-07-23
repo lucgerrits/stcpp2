@@ -123,10 +123,43 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     return size * nmemb;
 }
 
+struct WriteThis
+{
+    const char *readptr;
+    size_t sizeleft;
+};
+static size_t read_callback(void *dest, size_t size, size_t nmemb, void *userp)
+{
+    struct WriteThis *wt = (struct WriteThis *)userp;
+    size_t buffer_size = size * nmemb;
+
+    if (wt->sizeleft)
+    {
+        /* copy as much as possible from the source to the destination */
+        size_t copy_this_much = wt->sizeleft;
+        if (copy_this_much > buffer_size)
+            copy_this_much = buffer_size;
+        memcpy(dest, wt->readptr, copy_this_much);
+
+        wt->readptr += copy_this_much;
+        wt->sizeleft -= copy_this_much;
+        return copy_this_much; /* we copied this many bytes */
+    }
+
+    return 0; /* no more data left to deliver */
+}
 int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false*/)
 {
     CURL *curl;
     CURLcode res;
+
+    struct WriteThis wt;
+
+    wt.readptr = data.c_str();
+    wt.sizeleft = data.length();
+
+    std::cout << "Length data:" << (long)wt.sizeleft << std::endl;
+
     struct curl_slist *headers = NULL;
     std::string readBuffer;
     curl = curl_easy_init();
@@ -137,9 +170,11 @@ int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false
         headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-        //curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+        curl_easy_setopt(curl, CURLOPT_READDATA, &wt);
+
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (long)wt.sizeleft);
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -157,10 +192,10 @@ int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false
         std::cout << readBuffer << std::endl;
     }
     curl_global_cleanup();
-    if (0 == res)
-        return 1;
-    else
+    if (res != CURLE_OK)
         return 0;
+    else
+        return 1;
 }
 
 void LoadKeys(
@@ -236,4 +271,19 @@ void LoadKeys(
                 std::cout << "->Using:" << publicKey_str << std::endl;
         }
     }
+}
+
+void printProtoJson(google::protobuf::Message &message)
+{
+    //tool to convert into json and print the transaction proto:
+    google::protobuf::util::JsonPrintOptions proto_json_options;
+    proto_json_options.add_whitespace = true;
+    proto_json_options.always_print_primitive_fields = true;
+    proto_json_options.always_print_enums_as_ints = true;
+    proto_json_options.preserve_proto_field_names = true;
+    std::string message_json = "";
+    google::protobuf::util::MessageToJsonString(message, &message_json, proto_json_options);
+    std::cerr << std::endl
+              << "Message:"
+              << message_json << std::endl;
 }

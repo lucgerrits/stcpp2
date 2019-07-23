@@ -352,31 +352,16 @@ int main(int argc, char **argv)
         payload["car_id"] = PUBLIC_KEY;
         payload["owner"] = arg_owner;
 
-        //load file to Uchar
-        //mix of hacks from :
-        //https://stackoverflow.com/a/36658802
-        //& https://stackoverflow.com/a/604438
-        std::ifstream infile;
-        infile.open(arg_owner_pic);
-        unsigned char buffer[picture_buffer_size]; //buffer file size limit
-        //get length of file
-        infile.seekg(0, infile.end);
-        size_t file_bytes_length = infile.tellg();
-        infile.seekg(0, infile.beg);
-        // don't overflow the buffer!
-        if (file_bytes_length > picture_buffer_size)
-        {
-            std::cout << "ERROR: picture size (=" << file_bytes_length << ") is too big. Max buffer size = " << picture_buffer_size << std::endl;
-            exit(0);
-        }
-        //read file
-        if (isverbose)
-            std::cout << "Reading file :" << arg_owner_pic << std::endl;
-        infile.read((char *)(&buffer[0]), file_bytes_length);
+        //load file to Uchar then transform to hex
+        std::ifstream infile(arg_owner_pic, std::ios::binary);
+        // std::ostringstream ostrm;
+        // ostrm << infile.rdbuf();
+        std::string picture_content((std::istreambuf_iterator<char>(infile)),
+                            (std::istreambuf_iterator<char>()));
 
-        //exit(0);
-        payload["owner_picture"] = UcharToHexStr(buffer, file_bytes_length);
-        payload["owner_picture_ext"] = arg_owner_pic.substr(arg_owner_pic.find_last_of(".") + 1);//".png";
+        // payload["owner_picture"] = UcharToHexStr((unsigned char *)ostrm.str().c_str(), ostrm.str().length());
+        payload["owner_picture"] = UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length());
+        payload["owner_picture_ext"] = arg_owner_pic.substr(arg_owner_pic.find_last_of(".") + 1); //".png";
 
         if (isverbose)
             std::cout << "Encoding transaction payload..." << std::endl;
@@ -471,6 +456,16 @@ int main(int argc, char **argv)
         signature_serilized_str = UcharToHexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
 
         myBatch->set_header_signature(signature_serilized_str);
+        //myBatch->set_trace(true);//more logs in sawtooth
+
+        // std::cout << "myTransactionHeader" << std::endl;
+        // printProtoJson(myTransactionHeader);
+        // std::cout << "myTransaction" << std::endl;
+        // printProtoJson(*myTransaction);
+        // std::cout << "myBatchHeader" << std::endl;
+        // printProtoJson(myBatchHeader);
+        // std::cout << "myBatch" << std::endl;
+        // printProtoJson(*myBatch);
 
         if (isverbose)
             std::cout << "***Done build real transaction***" << std::endl;
