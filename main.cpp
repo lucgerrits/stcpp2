@@ -38,7 +38,8 @@ std::string arg_owner_pic = "";
 size_t picture_buffer_size = MAX_PICTURE_BUFFER_SIZE;
 int arg_value = -1;
 std::string batch_api_endpoint = "";
-
+std::string initpubkey = "";
+std::string initprivkey = "";
 //////////////////////////////////////////////////////////////////
 //Functions:
 
@@ -65,6 +66,10 @@ parse(int argc, char *argv[])
             ("url", "Sawtooth REST API endpoint.", cxxopts::value<std::string>()) //Is different for eth ?
             //Command for transaction processor
             ("cmd", "Command used. For Inkey are: set, dec or inc. For cartp: set_owner", cxxopts::value<std::string>())
+            //
+            ("privatekey", "Private key to use", cxxopts::value<std::string>())
+            //
+            ("publickey", "Public key to use", cxxopts::value<std::string>())
             //
             ;
 
@@ -111,6 +116,14 @@ parse(int argc, char *argv[])
         if (result.count("cmd"))
         {
             arg_command = result["cmd"].as<std::string>();
+        }
+        if (result.count("privatekey"))
+        {
+            initprivkey = result["privatekey"].as<std::string>();
+        }
+        if (result.count("publickey"))
+        {
+            initpubkey = result["publickey"].as<std::string>();
         }
         if (result.count("key"))
         {
@@ -177,7 +190,17 @@ int main(int argc, char **argv)
     //default keys:
     publicKey_str = PUBLIC_KEY;
     privateKey_str = PRIVATE_KEY;
-
+        std::cout << "initprivkey" << initprivkey << std::endl;
+    if (!initprivkey.empty() && !initpubkey.empty())
+    {
+        std::cout << "***Keys Given by command line***" << std::endl;
+        privateKey_str = initprivkey;
+        publicKey_str = initpubkey;
+    }
+    else
+    {
+        std::cout << "***Using default private and public keys***" << std::endl;
+    }
     LoadKeys(ctx, privateKey, privateKey_str, publicKey, publicKey_serilized, publicKey_str, isverbose);
 
     if (!strcmp(arg_mode.c_str(), "test"))
@@ -349,34 +372,20 @@ int main(int argc, char **argv)
             std::cout << "Setting transaction payload..." << std::endl;
         json payload;
         payload["tnx_cmd"] = arg_command;
-        payload["car_id"] = PUBLIC_KEY;
+        payload["car_id"] = publicKey_str;
         payload["owner"] = arg_owner;
 
-        //load file to Uchar
-        //mix of hacks from :
-        //https://stackoverflow.com/a/36658802
-        //& https://stackoverflow.com/a/604438
-        std::ifstream infile;
-        infile.open(arg_owner_pic);
-        unsigned char buffer[picture_buffer_size]; //buffer file size limit
-        //get length of file
-        infile.seekg(0, infile.end);
-        size_t file_bytes_length = infile.tellg();
-        infile.seekg(0, infile.beg);
-        // don't overflow the buffer!
-        if (file_bytes_length > picture_buffer_size)
-        {
-            std::cout << "ERROR: picture size (=" << file_bytes_length << ") is too big. Max buffer size = " << picture_buffer_size << std::endl;
-            exit(0);
-        }
-        //read file
-        if (isverbose)
-            std::cout << "Reading file :" << arg_owner_pic << std::endl;
-        infile.read((char *)(&buffer[0]), file_bytes_length);
+        //load file to Uchar then transform to hex
+        std::ifstream infile(arg_owner_pic, std::ios::binary);
+        // std::ostringstream ostrm;
+        // ostrm << infile.rdbuf();
+        std::string picture_content((std::istreambuf_iterator<char>(infile)),
+                                    (std::istreambuf_iterator<char>()));
 
-        //exit(0);
-        payload["owner_picture"] = UcharToHexStr(buffer, file_bytes_length);
-        payload["owner_picture_ext"] = arg_owner_pic.substr(arg_owner_pic.find_last_of(".") + 1);//".png";
+        // payload["owner_picture"] = UcharToHexStr((unsigned char *)ostrm.str().c_str(), ostrm.str().length());
+        //payload["owner_picture"] = UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length());
+        payload["owner_picture"] = UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length());
+        payload["owner_picture_ext"] = arg_owner_pic.substr(arg_owner_pic.find_last_of(".") + 1); //".png";
 
         if (isverbose)
             std::cout << "Encoding transaction payload..." << std::endl;
@@ -471,6 +480,16 @@ int main(int argc, char **argv)
         signature_serilized_str = UcharToHexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
 
         myBatch->set_header_signature(signature_serilized_str);
+        //myBatch->set_trace(true);//more logs in sawtooth
+
+        // std::cout << "myTransactionHeader" << std::endl;
+        // printProtoJson(myTransactionHeader);
+        // std::cout << "myTransaction" << std::endl;
+        // printProtoJson(*myTransaction);
+        // std::cout << "myBatchHeader" << std::endl;
+        // printProtoJson(myBatchHeader);
+        // std::cout << "myBatch" << std::endl;
+        // printProtoJson(*myBatch);
 
         if (isverbose)
             std::cout << "***Done build real transaction***" << std::endl;
@@ -524,9 +543,18 @@ int main(int argc, char **argv)
         {
         }
     }
+    else if (!strcmp(arg_mode.c_str(), "genkeys"))
+    {
+        std::cout << "***Generating keys***" << std::endl;
+        GenerateKeyPair(ctx, privateKey, privateKey_str, publicKey, publicKey_serilized, publicKey_str, isverbose);
+        std::cout << std::left;
+        std::cout << std::setw(15) << "Private Key: " << privateKey_str << std::endl;
+        std::cout << std::setw(15) << "Public Key: " << publicKey_str << std::endl;
+    }
     else
     {
         std::cout << "Unknown mode. Only: 'test' or 'eth'" << std::endl;
+        exit(1);
     }
     std::cout << "Done." << std::endl;
     return 0;

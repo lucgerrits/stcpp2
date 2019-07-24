@@ -33,7 +33,7 @@ cbor-cpp/src/output_dynamic.o: cbor-cpp/src/output_dynamic.cpp cbor-cpp/src/outp
 	g++ $(flag_global) -c cbor-cpp/src/output_dynamic.cpp -I cbor-cpp/src/ -o cbor-cpp/src/output_dynamic.o
 
 protos_pb_h/transaction.pb.h: protos/transaction.proto
-	mkdir -p protos_pb_h &&  ./protobuf/.libs/bin/protoc --proto_path=protos --cpp_out=protos_pb_h/ protos/*
+	mkdir -p protos_pb_h &&  protobuf/src/protoc --proto_path=protos --cpp_out=protos_pb_h/ protos/*
 
 cryptopp/cryptlib.o: cryptopp/cryptlib.h cryptopp/cryptlib.cpp
 	cd cryptopp && make && cd -

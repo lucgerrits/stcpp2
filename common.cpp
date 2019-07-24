@@ -123,10 +123,43 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     return size * nmemb;
 }
 
+struct WriteThis
+{
+    const char *readptr;
+    size_t sizeleft;
+};
+static size_t read_callback(void *dest, size_t size, size_t nmemb, void *userp)
+{
+    struct WriteThis *wt = (struct WriteThis *)userp;
+    size_t buffer_size = size * nmemb;
+
+    if (wt->sizeleft)
+    {
+        /* copy as much as possible from the source to the destination */
+        size_t copy_this_much = wt->sizeleft;
+        if (copy_this_much > buffer_size)
+            copy_this_much = buffer_size;
+        memcpy(dest, wt->readptr, copy_this_much);
+
+        wt->readptr += copy_this_much;
+        wt->sizeleft -= copy_this_much;
+        return copy_this_much; /* we copied this many bytes */
+    }
+
+    return 0; /* no more data left to deliver */
+}
 int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false*/)
 {
     CURL *curl;
     CURLcode res;
+
+    struct WriteThis wt;
+
+    wt.readptr = data.c_str();
+    wt.sizeleft = data.length();
+
+    std::cout << "Length data:" << (long)wt.sizeleft << std::endl;
+
     struct curl_slist *headers = NULL;
     std::string readBuffer;
     curl = curl_easy_init();
@@ -137,9 +170,11 @@ int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false
         headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-        //curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, -1L);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+        curl_easy_setopt(curl, CURLOPT_READDATA, &wt);
+
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (long)wt.sizeleft);
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -157,10 +192,10 @@ int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false
         std::cout << readBuffer << std::endl;
     }
     curl_global_cleanup();
-    if (0 == res)
-        return 1;
-    else
+    if (res != CURLE_OK)
         return 0;
+    else
+        return 1;
 }
 
 void LoadKeys(
@@ -174,7 +209,7 @@ void LoadKeys(
 {
     if (publicKey_str.length() > 0 && privateKey_str.length() > 0)
     {
-        std::cout << "Using default private and public keys." << std::endl;
+        //std::cout << "Using default private and public keys." << std::endl;
         /* LOAD public keys */
         {
             unsigned char pubkey_char[PUBLIC_KEY_SERILIZED_SIZE];
@@ -217,6 +252,58 @@ void LoadKeys(
 
         /* Generate a public key */
         {
+            CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
+            if (isverbose)
+                std::cout << "Public key verified." << std::endl;
+            if (isverbose)
+                std::cout << "->Using:" << UcharToHexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
+        }
+
+        /* Serilize public key */
+        {
+            emptyBytes(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
+            size_t pub_key_ser_size = PUBLIC_KEY_SERILIZED_SIZE;
+            CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &pub_key_ser_size, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
+            publicKey_str = UcharToHexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
+            if (isverbose)
+                std::cout << "Public key serilized ok." << std::endl;
+            if (isverbose)
+                std::cout << "->Using:" << publicKey_str << std::endl;
+        }
+    }
+}
+
+void GenerateKeyPair(
+    SECP256K1_API::secp256k1_context *ctx,
+    unsigned char *privateKey,
+    std::string &privateKey_str,
+    SECP256K1_API::secp256k1_pubkey &publicKey,
+    unsigned char *publicKey_serilized,
+    std::string &publicKey_str,
+    bool isverbose /*=false*/)
+{
+        /* Generate a random key */
+        {
+            emptyBytes(privateKey, PRIVATE_KEY_SIZE);
+            generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
+            privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
+            if (isverbose)
+                if (isverbose)
+                    std::cout << "generatePrivateKey:" << privateKey_str << std::endl;
+            while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
+            {
+                generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
+                privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
+                std::cout << "generatePrivateKey:" << privateKey_str << std::endl;
+            }
+            CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
+            if (isverbose)
+                std::cout << "Private key verified.\n->Using:" << privateKey_str << std::endl;
+        }
+
+        /* Generate a public key */
+        {
+            emptyBytes(publicKey.data, PUBLIC_KEY_SIZE);
             //FAILING:Segmentation fault
             CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
             if (isverbose)
@@ -227,13 +314,28 @@ void LoadKeys(
 
         /* Serilize public key */
         {
-            emptyBytes(publicKey_serilized, (size_t)PUBLIC_KEY_SERILIZED_SIZE);
-            CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, (size_t *)PUBLIC_KEY_SERILIZED_SIZE, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
+            emptyBytes(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
+            size_t pub_key_ser_size = PUBLIC_KEY_SERILIZED_SIZE;
+            CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &pub_key_ser_size, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
             publicKey_str = UcharToHexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
             if (isverbose)
                 std::cout << "Public key serilized ok." << std::endl;
             if (isverbose)
                 std::cout << "->Using:" << publicKey_str << std::endl;
         }
-    }
+}
+
+void printProtoJson(google::protobuf::Message &message)
+{
+    //tool to convert into json and print the transaction proto:
+    google::protobuf::util::JsonPrintOptions proto_json_options;
+    proto_json_options.add_whitespace = true;
+    proto_json_options.always_print_primitive_fields = true;
+    proto_json_options.always_print_enums_as_ints = true;
+    proto_json_options.preserve_proto_field_names = true;
+    std::string message_json = "";
+    google::protobuf::util::MessageToJsonString(message, &message_json, proto_json_options);
+    std::cerr << std::endl
+              << "Message:"
+              << message_json << std::endl;
 }
