@@ -74,7 +74,7 @@ std::string ToHex(std::string s, bool upper_case);
 void buildAddress(std::string txnFamily, std::string entryName, unsigned char *ouput35bytes);
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 int sendData(std::string data, std::string api_endpoint, bool isverbose);
-void LoadKeys(
+int LoadKeys(
         SECP256K1_API::secp256k1_context *ctx, 
         unsigned char *privateKey, 
         std::string &privateKey_str, 
@@ -82,7 +82,7 @@ void LoadKeys(
         unsigned char *publicKey_serilized, 
         std::string &publicKey_str,
         bool isverbose);
-void GenerateKeyPair(
+int GenerateKeyPair(
     SECP256K1_API::secp256k1_context *ctx,
     unsigned char *privateKey,
     std::string &privateKey_str,

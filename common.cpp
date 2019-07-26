@@ -198,7 +198,7 @@ int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false
         return 1;
 }
 
-void LoadKeys(
+int LoadKeys(
     SECP256K1_API::secp256k1_context *ctx,
     unsigned char *privateKey,
     std::string &privateKey_str,
@@ -229,51 +229,16 @@ void LoadKeys(
             if (isverbose)
                 std::cout << "Ok." << std::endl;
         }
+        return 1;
     }
     else
     {
-        /* Generate a random key */
-        {
-            generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
-            privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
-            if (isverbose)
-                if (isverbose)
-                    std::cout << "generatePrivateKey:" << privateKey_str << std::endl;
-            while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
-            {
-                generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
-                privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
-                std::cout << "generatePrivateKey:" << privateKey_str << std::endl;
-            }
-            CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
-            if (isverbose)
-                std::cout << "Private key verified.\n->Using:" << privateKey_str << std::endl;
-        }
-
-        /* Generate a public key */
-        {
-            CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
-            if (isverbose)
-                std::cout << "Public key verified." << std::endl;
-            if (isverbose)
-                std::cout << "->Using:" << UcharToHexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
-        }
-
-        /* Serilize public key */
-        {
-            emptyBytes(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
-            size_t pub_key_ser_size = PUBLIC_KEY_SERILIZED_SIZE;
-            CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &pub_key_ser_size, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
-            publicKey_str = UcharToHexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
-            if (isverbose)
-                std::cout << "Public key serilized ok." << std::endl;
-            if (isverbose)
-                std::cout << "->Using:" << publicKey_str << std::endl;
-        }
+        std::cerr << "ERROR: No keys loaded. Please verify that you have given keys." << std::endl;
+        return 0;
     }
 }
 
-void GenerateKeyPair(
+int GenerateKeyPair(
     SECP256K1_API::secp256k1_context *ctx,
     unsigned char *privateKey,
     std::string &privateKey_str,
@@ -289,12 +254,12 @@ void GenerateKeyPair(
             privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
             if (isverbose)
                 if (isverbose)
-                    std::cout << "generatePrivateKey:" << privateKey_str << std::endl;
+                    std::cout << "generatePrivateKey: " << privateKey_str << std::endl;
             while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
             {
                 generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
                 privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
-                std::cout << "generatePrivateKey:" << privateKey_str << std::endl;
+                std::cout << "generatePrivateKey: " << privateKey_str << std::endl;
             }
             CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
             if (isverbose)
@@ -323,6 +288,7 @@ void GenerateKeyPair(
             if (isverbose)
                 std::cout << "->Using:" << publicKey_str << std::endl;
         }
+        return 1;
 }
 
 void printProtoJson(google::protobuf::Message &message)
