@@ -4,7 +4,7 @@ libs = -Lprotobuf/.libs/lib -lprotobuf -lcurl -L. -lsecp256k1
 includes = -I protos_pb_h/ -I nlohmann/ -I . -I secp256k1/includes -Iprotobuf/.libs/include
 #######objects for main prog:
 transaction_objects = main.cpp
-transaction_objects += cbor-cpp/src/encoder.o cbor-cpp/src/decoder.o cbor-cpp/src/output_dynamic.o cbor-cpp/src/input.o cbor-cpp/src/listener_debug.o
+# transaction_objects += cbor-cpp/src/encoder.o cbor-cpp/src/decoder.o cbor-cpp/src/output_dynamic.o cbor-cpp/src/input.o cbor-cpp/src/listener_debug.o
 transaction_objects += cryptopp/cryptlib.o
 transaction_objects += common.o
 #some flags
@@ -21,16 +21,16 @@ common.o: common.cpp common.h
 	g++ $(flag_global) $(libs) $(includes) -c common.cpp -o common.o
 
 #cbor stuff:
-cbor-cpp/src/encoder.o: cbor-cpp/src/encoder.cpp cbor-cpp/src/encoder.h
-	g++ $(flag_global) -c cbor-cpp/src/encoder.cpp -I cbor-cpp/src/ -o cbor-cpp/src/encoder.o
-cbor-cpp/src/decoder.o: cbor-cpp/src/decoder.cpp cbor-cpp/src/decoder.h
-	g++ $(flag_global) -c cbor-cpp/src/decoder.cpp -I cbor-cpp/src/ -o cbor-cpp/src/decoder.o
-cbor-cpp/src/listener_debug.o: cbor-cpp/src/listener_debug.cpp cbor-cpp/src/listener_debug.h
-	g++ $(flag_global) -c cbor-cpp/src/listener_debug.cpp -I cbor-cpp/src/ -o cbor-cpp/src/listener_debug.o
-cbor-cpp/src/input.o: cbor-cpp/src/input.cpp cbor-cpp/src/input.h
-	g++ $(flag_global) -c cbor-cpp/src/input.cpp -I cbor-cpp/src/ -o cbor-cpp/src/input.o
-cbor-cpp/src/output_dynamic.o: cbor-cpp/src/output_dynamic.cpp cbor-cpp/src/output_dynamic.h
-	g++ $(flag_global) -c cbor-cpp/src/output_dynamic.cpp -I cbor-cpp/src/ -o cbor-cpp/src/output_dynamic.o
+# cbor-cpp/src/encoder.o: cbor-cpp/src/encoder.cpp cbor-cpp/src/encoder.h
+# 	g++ $(flag_global) -c cbor-cpp/src/encoder.cpp -I cbor-cpp/src/ -o cbor-cpp/src/encoder.o
+# cbor-cpp/src/decoder.o: cbor-cpp/src/decoder.cpp cbor-cpp/src/decoder.h
+# 	g++ $(flag_global) -c cbor-cpp/src/decoder.cpp -I cbor-cpp/src/ -o cbor-cpp/src/decoder.o
+# cbor-cpp/src/listener_debug.o: cbor-cpp/src/listener_debug.cpp cbor-cpp/src/listener_debug.h
+# 	g++ $(flag_global) -c cbor-cpp/src/listener_debug.cpp -I cbor-cpp/src/ -o cbor-cpp/src/listener_debug.o
+# cbor-cpp/src/input.o: cbor-cpp/src/input.cpp cbor-cpp/src/input.h
+# 	g++ $(flag_global) -c cbor-cpp/src/input.cpp -I cbor-cpp/src/ -o cbor-cpp/src/input.o
+# cbor-cpp/src/output_dynamic.o: cbor-cpp/src/output_dynamic.cpp cbor-cpp/src/output_dynamic.h
+# 	g++ $(flag_global) -c cbor-cpp/src/output_dynamic.cpp -I cbor-cpp/src/ -o cbor-cpp/src/output_dynamic.o
 
 protos_pb_h/transaction.pb.h: protos/transaction.proto
 	mkdir -p protos_pb_h &&  protobuf/src/protoc --proto_path=protos --cpp_out=protos_pb_h/ protos/*

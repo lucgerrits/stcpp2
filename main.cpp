@@ -17,6 +17,10 @@ This will later on:
 
 #include "cxxopts/include/cxxopts.hpp" //to parse arguments
 
+//#include "cbor-cpp/src/encoder.h"
+//#include "cbor-cpp/src/decoder.h"
+//#include "cbor-cpp/src/output_dynamic.h"
+
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
@@ -190,7 +194,7 @@ int main(int argc, char **argv)
     //default keys:
     publicKey_str = PUBLIC_KEY;
     privateKey_str = PRIVATE_KEY;
-        std::cout << "initprivkey" << initprivkey << std::endl;
+    std::cout << "initprivkey" << initprivkey << std::endl;
     if (!initprivkey.empty() && !initpubkey.empty())
     {
         std::cout << "***Keys Given by command line***" << std::endl;
@@ -303,7 +307,7 @@ int main(int argc, char **argv)
         myTransaction->Clear();
         if (isverbose)
             std::cout << "Setting transaction..." << std::endl;
-        myTransaction->set_payload(payload_str);
+        myTransaction->set_payload(message);
         myTransaction->set_header(myTransactionHeader.SerializePartialAsString());               //build a string of the transaction header
         std::string myTransactionHeader_string = myTransactionHeader.SerializePartialAsString(); //serialize batch header to string
 
@@ -370,21 +374,22 @@ int main(int argc, char **argv)
         //arg_key = PUBLIC_KEY;
         if (isverbose)
             std::cout << "Setting transaction payload..." << std::endl;
+
         json payload;
         payload["tnx_cmd"] = arg_command;
         payload["car_id"] = publicKey_str;
         payload["owner"] = arg_owner;
 
-        //load file to Uchar then transform to hex
+        // //load file to Uchar then transform to hex
         std::ifstream infile(arg_owner_pic, std::ios::binary);
         // std::ostringstream ostrm;
-        // ostrm << infile.rdbuf();
+        // // ostrm << infile.rdbuf();
         std::string picture_content((std::istreambuf_iterator<char>(infile)),
                                     (std::istreambuf_iterator<char>()));
-
+        // ostrm << std::hex << picture_content;
         // payload["owner_picture"] = UcharToHexStr((unsigned char *)ostrm.str().c_str(), ostrm.str().length());
-        //payload["owner_picture"] = UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length());
         payload["owner_picture"] = UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length());
+        //payload["owner_picture"] = ostrm.str();
         payload["owner_picture_ext"] = arg_owner_pic.substr(arg_owner_pic.find_last_of(".") + 1); //".png";
 
         if (isverbose)
@@ -392,6 +397,15 @@ int main(int argc, char **argv)
         std::vector<uint8_t> payload_vect = json::to_cbor(payload);
         std::string payload_str(payload_vect.begin(), payload_vect.end());
         message = payload_str;
+
+        // message = "{\"tnx_cmd\": \"" + arg_command + "\", \"car_id\":\"" + publicKey_str + "\", \"owner\":\"" + arg_owner + "\", \"owner_picture\":\"" + UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length()) + "\", \"owner_picture_ext\":\"" + arg_owner_pic.substr(arg_owner_pic.find_last_of(".") + 1) + "\"}";
+        // cbor::output_dynamic output;
+        // cbor::encoder encoder(output);
+        // encoder.write_string("tnx_cmd");
+        // encoder.write_string(arg_command);
+        // encoder.write_string(message);
+
+        // message = UcharToHexStr(output.data(), output.size());
 
         //PROTOBUF
         //init Batch
@@ -410,7 +424,7 @@ int main(int argc, char **argv)
 
         message_hash_str = sha512Data(message);
         unsigned char address[35];
-        buildAddress(tp_family, payload["car_id"], address);
+        buildAddress(tp_family, publicKey_str, address);
         const std::string address_str = UcharToHexStr(address, 35);
         if (isverbose)
             std::cout << "address used:" << address_str << std::endl;
@@ -443,7 +457,7 @@ int main(int argc, char **argv)
         myTransaction->Clear();
         if (isverbose)
             std::cout << "Setting transaction..." << std::endl;
-        myTransaction->set_payload(payload_str);
+        myTransaction->set_payload(message);
         myTransaction->set_header(myTransactionHeader.SerializePartialAsString());               //build a string of the transaction header
         std::string myTransactionHeader_string = myTransactionHeader.SerializePartialAsString(); //serialize batch header to string
 
@@ -480,7 +494,7 @@ int main(int argc, char **argv)
         signature_serilized_str = UcharToHexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
 
         myBatch->set_header_signature(signature_serilized_str);
-        //myBatch->set_trace(true);//more logs in sawtooth
+        myBatch->set_trace(true); //more logs in sawtooth
 
         // std::cout << "myTransactionHeader" << std::endl;
         // printProtoJson(myTransactionHeader);
@@ -546,6 +560,7 @@ int main(int argc, char **argv)
     else if (!strcmp(arg_mode.c_str(), "genkeys"))
     {
         std::cout << "***Generating keys***" << std::endl;
+
         GenerateKeyPair(ctx, privateKey, privateKey_str, publicKey, publicKey_serilized, publicKey_str, isverbose);
         std::cout << std::left;
         std::cout << std::setw(15) << "Private Key: " << privateKey_str << std::endl;
