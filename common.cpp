@@ -105,7 +105,7 @@ void buildIntkeyAddress(std::string txnFamily, std::string entryName, unsigned c
     {
         ouput35bytes[i] = txnFamily_hex_char[i];
     }
-    //now add the rest of the address: for intkey it is the 32bytes of the MSB of the sha512 of the key
+    //now add the rest of the address: for intkey it is the 32bytes of the LSB of the sha512 of the key
     std::string entryName_hex_str = sha512Data(entryName);
     entryName_hex_str = entryName_hex_str.substr(entryName_hex_str.size() - 64, entryName_hex_str.size());
     unsigned char entryName_hex_char[64];
@@ -119,6 +119,9 @@ void buildIntkeyAddress(std::string txnFamily, std::string entryName, unsigned c
 
 void buildCarTPAddress(std::string txnFamily, std::string data_type, std::string key_id, unsigned char *ouput35bytes)
 {
+    std::cout << "txnFamily:" << txnFamily << std::endl;
+    std::cout << "data_type:" << data_type << std::endl;
+    std::cout << "key_id:" << key_id << std::endl;
     emptyBytes(ouput35bytes, 35);
     //build prefix namespace: first set the first 3 bytes
     std::string txnFamily_hex_str = sha512Data(txnFamily);
@@ -134,16 +137,17 @@ void buildCarTPAddress(std::string txnFamily, std::string data_type, std::string
     HexStrToUchar(data_type_hex_char, data_type_hex_str.c_str(), 4);
     for (int i = 0; i < 2; i++)
     {
-        ouput35bytes[i] = data_type_hex_char[i];
+        ouput35bytes[3 + i] = data_type_hex_char[i];
     }
     //now add the rest of the address: for cartp it is the 30bytes of the MSB of the sha512 of the key
     std::string key_id_hex_str = sha512Data(key_id);
-    key_id_hex_str = key_id_hex_str.substr(key_id_hex_str.size() - 60, key_id_hex_str.size());
+    std::cout << "key_id_hex_str:" << key_id_hex_str << std::endl;
+    key_id_hex_str = key_id_hex_str.substr(0, 60);
     unsigned char key_id_hex_char[60];
     HexStrToUchar(key_id_hex_char, key_id_hex_str.c_str(), 60);
     for (int i = 0; i < 30; i++)
     {
-        ouput35bytes[3 + i] = key_id_hex_char[i];
+        ouput35bytes[5 + i] = key_id_hex_char[i];
     }
     //std::cout << "Address:" << UcharToHexStr(ouput35bytes, 35) << std::endl;
 }
@@ -278,48 +282,48 @@ int GenerateKeyPair(
     std::string &publicKey_str,
     bool isverbose /*=false*/)
 {
-        /* Generate a random key */
+    /* Generate a random key */
+    {
+        emptyBytes(privateKey, PRIVATE_KEY_SIZE);
+        generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
+        privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
+        if (isverbose)
+            if (isverbose)
+                std::cout << "generatePrivateKey: " << privateKey_str << std::endl;
+        while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
         {
-            emptyBytes(privateKey, PRIVATE_KEY_SIZE);
             generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
             privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
-            if (isverbose)
-                if (isverbose)
-                    std::cout << "generatePrivateKey: " << privateKey_str << std::endl;
-            while (SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 0) //regenerate private key until it is valid
-            {
-                generateRandomBytes(privateKey, PRIVATE_KEY_SIZE);
-                privateKey_str = UcharToHexStr(privateKey, PRIVATE_KEY_SIZE);
-                std::cout << "generatePrivateKey: " << privateKey_str << std::endl;
-            }
-            CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
-            if (isverbose)
-                std::cout << "Private key verified.\n->Using:" << privateKey_str << std::endl;
+            std::cout << "generatePrivateKey: " << privateKey_str << std::endl;
         }
+        CHECK(SECP256K1_API::secp256k1_ec_seckey_verify(ctx, privateKey) == 1);
+        if (isverbose)
+            std::cout << "Private key verified.\n->Using:" << privateKey_str << std::endl;
+    }
 
-        /* Generate a public key */
-        {
-            emptyBytes(publicKey.data, PUBLIC_KEY_SIZE);
-            //FAILING:Segmentation fault
-            CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
-            if (isverbose)
-                std::cout << "Public key verified." << std::endl;
-            if (isverbose)
-                std::cout << "->Using:" << UcharToHexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
-        }
+    /* Generate a public key */
+    {
+        emptyBytes(publicKey.data, PUBLIC_KEY_SIZE);
+        //FAILING:Segmentation fault
+        CHECK(SECP256K1_API::secp256k1_ec_pubkey_create(ctx, &publicKey, privateKey) == 1);
+        if (isverbose)
+            std::cout << "Public key verified." << std::endl;
+        if (isverbose)
+            std::cout << "->Using:" << UcharToHexStr(publicKey.data, PUBLIC_KEY_SIZE) << std::endl;
+    }
 
-        /* Serilize public key */
-        {
-            emptyBytes(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
-            size_t pub_key_ser_size = PUBLIC_KEY_SERILIZED_SIZE;
-            CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &pub_key_ser_size, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
-            publicKey_str = UcharToHexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
-            if (isverbose)
-                std::cout << "Public key serilized ok." << std::endl;
-            if (isverbose)
-                std::cout << "->Using:" << publicKey_str << std::endl;
-        }
-        return 1;
+    /* Serilize public key */
+    {
+        emptyBytes(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
+        size_t pub_key_ser_size = PUBLIC_KEY_SERILIZED_SIZE;
+        CHECK(SECP256K1_API::secp256k1_ec_pubkey_serialize(ctx, publicKey_serilized, &pub_key_ser_size, &publicKey, SECP256K1_EC_COMPRESSED) == 1);
+        publicKey_str = UcharToHexStr(publicKey_serilized, PUBLIC_KEY_SERILIZED_SIZE);
+        if (isverbose)
+            std::cout << "Public key serilized ok." << std::endl;
+        if (isverbose)
+            std::cout << "->Using:" << publicKey_str << std::endl;
+    }
+    return 1;
 }
 
 void printProtoJson(google::protobuf::Message &message)
