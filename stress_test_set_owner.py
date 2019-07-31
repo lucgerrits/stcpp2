@@ -17,7 +17,7 @@ for i in range(nb_calls):
     print("Call #{}".format(i))
     rnd_pic = random.choice(pictures)
     output = subprocess.check_output(['./transaction', '--mode', 'cartp', 
-                    '--url', 'http://134.59.230.101:8008/batches', 
+                    '--url', 'http://134.59.230.148:8008/batches', 
                     '--cmd', 'set_owner', 
                     '--owner', r'Voiture de {}'.format(rnd_pic.split(".")[0]), 
                     '--owner_pic', 'tests/{}'.format(rnd_pic)])

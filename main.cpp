@@ -36,7 +36,7 @@ struct SawtoothKeys
     unsigned char privateKey[PRIVATE_KEY_SIZE];
     unsigned char publicKey_serilized[PUBLIC_KEY_SERILIZED_SIZE];
 };
-struct ArgOptions
+struct Arg_Options
 {
     std::string arg_mode;
     std::string arg_command = "";
@@ -46,8 +46,16 @@ struct ArgOptions
     std::string arg_key = "";
     int arg_value = -1;
 
-    std::string arg_owner = "";
-    std::string arg_owner_pic = "";
+    std::string arg_owner_lastname = "";
+    std::string arg_owner_name = "";
+    std::string arg_owner_address = "";
+    std::string arg_owner_country = "";
+    std::string arg_owner_contact = "";
+    std::string arg_owner_picture = "";
+
+    std::string arg_car_brand = "";
+    std::string arg_car_type = "";
+    std::string arg_car_licence = "";
 
     std::string eth_mode;
     std::string eth_create_account_alias = "";
@@ -65,7 +73,7 @@ static SECP256K1_API::secp256k1_context *ctx = SECP256K1_API::secp256k1_context_
 
 //following the example: https://github.com/jarro2783/cxxopts/blob/master/src/example.cpp
 cxxopts::ParseResult
-parse(int argc, char *argv[], ArgOptions &argoptions)
+parse(int argc, char *argv[], Arg_Options &arg_options)
 {
     try
     {
@@ -85,7 +93,7 @@ parse(int argc, char *argv[], ArgOptions &argoptions)
             // url endpoint
             ("url", "Sawtooth REST API endpoint.", cxxopts::value<std::string>()) //Is different for eth ?
             //Command for transaction processor
-            ("cmd", "Command used. For Inkey are: set, dec or inc. For cartp: set_owner", cxxopts::value<std::string>())
+            ("cmd", "Command used. For Inkey are: set, dec or inc. For cartp: new_car, new_owner, crash", cxxopts::value<std::string>())
             //
             ("privatekey", "Private key to use", cxxopts::value<std::string>())
             //
@@ -102,33 +110,50 @@ parse(int argc, char *argv[], ArgOptions &argoptions)
             //Inkey value
             ("value", "Inkey value", cxxopts::value<int>());
 
-        options.add_options("Cartp")
+        options.add_options("Cartp:new_car")
             //Cartp
-            //cartp owner
-            ("owner", "Car owner", cxxopts::value<std::string>())
-            //cartp owner picture
-            ("owner_pic", "Car owner picture", cxxopts::value<std::string>())
+            //cartp new_car
+            ("car_brand", "Car brand", cxxopts::value<std::string>())
+            //
+            ("car_type", "Car type", cxxopts::value<std::string>())
+            //
+            ("car_licence", "Car licence", cxxopts::value<std::string>())
             //
             ;
-
+        options.add_options("Cartp:new_owner")
+            //Cartp
+            //cartp new_owner
+            ("owner_lastname", "Car owner lastname", cxxopts::value<std::string>())
+            //
+            ("owner_name", "Car owner name", cxxopts::value<std::string>())
+            //
+            ("owner_address", "Car owner address", cxxopts::value<std::string>())
+            //
+            ("owner_country", "Car owner country", cxxopts::value<std::string>())
+            //
+            ("owner_contact", "Car owner contact", cxxopts::value<std::string>())
+            //
+            ("owner_picture", "Car owner picture", cxxopts::value<std::string>())
+            //
+            ;
         options.add_options("Ethereum")
             //eth create account
             ("create", "Create Ethereum account", cxxopts::value<std::string>());
 
         options.add_options("Other")("v,verbose", "verbose");
-        options.parse_positional({"input", "output", "positional"});
+        //options.parse_positional({"input", "output", "positional"});
 
         auto result = options.parse(argc, argv);
 
         if (result.count("help"))
         {
-            std::cout << options.help({"", "Inkey", "Cartp", "Other"}) << std::endl;
+            std::cout << options.help({"", "Inkey", "Cartp:new_car", "Cartp:new_owner", "Other"}) << std::endl;
             exit(0);
         }
         if (result.count("mode"))
         {
             //go for test mode
-            argoptions.arg_mode = result["mode"].as<std::string>();
+            arg_options.arg_mode = result["mode"].as<std::string>();
         }
         else
         {
@@ -137,53 +162,85 @@ parse(int argc, char *argv[], ArgOptions &argoptions)
         }
         if (result.count("cmd"))
         {
-            argoptions.arg_command = result["cmd"].as<std::string>();
+            arg_options.arg_command = result["cmd"].as<std::string>();
         }
         if (result.count("privatekey"))
         {
-            argoptions.privKey = result["privatekey"].as<std::string>();
+            arg_options.privKey = result["privatekey"].as<std::string>();
         }
         if (result.count("publickey"))
         {
-            argoptions.pubKey = result["publickey"].as<std::string>();
+            arg_options.pubKey = result["publickey"].as<std::string>();
         }
         if (result.count("carprivatekey"))
         {
-            argoptions.carprivKey = result["carprivatekey"].as<std::string>();
+            arg_options.carprivKey = result["carprivatekey"].as<std::string>();
         }
         if (result.count("carpublickey"))
         {
-            argoptions.carpubKey = result["carpublickey"].as<std::string>();
+            arg_options.carpubKey = result["carpublickey"].as<std::string>();
         }
+        //intkey stuff
         if (result.count("key"))
         {
-            argoptions.arg_key = result["key"].as<std::string>();
+            arg_options.arg_key = result["key"].as<std::string>();
         }
         if (result.count("value"))
         {
             //go for test mode
-            argoptions.arg_value = result["value"].as<int>();
+            arg_options.arg_value = result["value"].as<int>();
         }
-        if (result.count("owner"))
+        //cartp stuff
+        if (result.count("owner_lastname"))
         {
-            argoptions.arg_owner = result["owner"].as<std::string>();
+            arg_options.arg_owner_lastname = result["owner_lastname"].as<std::string>();
         }
-        if (result.count("owner_pic"))
+        if (result.count("owner_name"))
         {
-            argoptions.arg_owner_pic = result["owner_pic"].as<std::string>();
+            arg_options.arg_owner_name = result["owner_name"].as<std::string>();
         }
+        if (result.count("owner_address"))
+        {
+            arg_options.arg_owner_address = result["owner_address"].as<std::string>();
+        }
+        if (result.count("owner_country"))
+        {
+            arg_options.arg_owner_country = result["owner_country"].as<std::string>();
+        }
+        if (result.count("owner_contact"))
+        {
+            arg_options.arg_owner_contact = result["owner_contact"].as<std::string>();
+        }
+        if (result.count("owner_picture"))
+        {
+            arg_options.arg_owner_picture = result["owner_picture"].as<std::string>();
+        }
+        if (result.count("car_brand"))
+        {
+            arg_options.arg_car_brand = result["car_brand"].as<std::string>();
+        }
+        if (result.count("car_type"))
+        {
+            arg_options.arg_car_type = result["car_type"].as<std::string>();
+        }
+        if (result.count("car_licence"))
+        {
+            arg_options.arg_car_licence = result["car_licence"].as<std::string>();
+        }
+
+        //eth stuff
         if (result.count("create"))
         {
-            argoptions.eth_mode = "create_account";
-            argoptions.eth_create_account_alias = result["create"].as<std::string>();
+            arg_options.eth_mode = "create_account";
+            arg_options.eth_create_account_alias = result["create"].as<std::string>();
         }
         if (result.count("url"))
         {
-            argoptions.api_endpoint = result["url"].as<std::string>(); //"http://134.59.230.101:8081/batches"
+            arg_options.api_endpoint = result["url"].as<std::string>(); //"http://134.59.230.101:8081/batches"
         }
         if (result.count("v"))
         {
-            argoptions.isverbose = true;
+            arg_options.isverbose = true;
         }
         return result;
     }
@@ -199,7 +256,7 @@ int main(int argc, char **argv)
 {
     SawtoothKeys userKeys;
     SawtoothKeys carKeys;
-    ArgOptions options;
+    Arg_Options options;
     parse(argc, argv, options); //parse command line arguments
 
     std::string message = "";
@@ -278,7 +335,7 @@ int main(int argc, char **argv)
         if (!strcmp(options.arg_command.c_str(), "") || !strcmp(options.arg_command.c_str(), "") || options.arg_value == -1)
         {
             std::cout << "ERROR: key, value and cmd is required." << std::endl;
-            exit(0);
+            exit(1);
         }
         json payload;
         payload["Verb"] = options.arg_command;
@@ -305,14 +362,10 @@ int main(int argc, char **argv)
 
         message_hash_str = sha512Data(message);
         unsigned char address[35];
-        buildAddress(tp_family, options.arg_key, address);
+        buildIntkeyAddress(tp_family, options.arg_key, address);
         const std::string address_str = UcharToHexStr(address, 35);
         if (options.isverbose)
             std::cout << "address used:" << address_str << std::endl;
-
-        // buildAddress(tp_family, "name", address);
-        // address_str = UcharToHexStr(address, 35);
-        // std::cout << "address_str:" << address_str << std::endl;
 
         //first build transaction
         //& add all necessary data to protos messages
@@ -390,32 +443,83 @@ int main(int argc, char **argv)
         std::string tp_family = "cartp";
         if (options.isverbose)
             std::cout << "***Start build transaction***" << std::endl;
-        if (!strcmp(options.arg_command.c_str(), "") || !strcmp(options.arg_owner_pic.c_str(), "") || !strcmp(options.arg_owner.c_str(), ""))
-        {
-            std::cout << "ERROR: owner, owner_pic and cmd is required." << std::endl;
-            exit(0);
-        }
-        //arg_key = PUBLIC_KEY;
+
         if (options.isverbose)
             std::cout << "Setting transaction payload..." << std::endl;
-
+        if (options.arg_command.empty())
+        {
+            std::cout << "ERROR: arg_command, ";
+            std::cout << "is required." << std::endl;
+            exit(1);
+        }
         json payload;
+        unsigned char address[35];
+
+        //following payload fields are always required
         payload["tnx_cmd"] = options.arg_command;
         payload["car_id"] = carKeys.pubKey;
-        payload["owner"] = options.arg_owner;
+        if (!strcmp(options.arg_command.c_str(), "new_car"))
+        {
+            //set payload for the command new_car
+            if (options.arg_car_brand.empty() ||
+                options.arg_car_type.empty() ||
+                options.arg_car_licence.empty())
+            {
+                std::cout << "ERROR: ";
+                std::cout << "car_brand, ";
+                std::cout << "car_type, ";
+                std::cout << "car_licence, ";
+                std::cout << "is required." << std::endl;
+                exit(1);
+            }
+            payload["car_brand"] = options.arg_car_brand;
+            payload["car_type"] = options.arg_car_type;
+            payload["car_licence"] = options.arg_car_licence;
+            buildCarTPAddress(tp_family, "car", carKeys.pubKey, address);
+        }
+        else if (!strcmp(options.arg_command.c_str(), "new_owner"))
+        {
+            //set payload for the command new_owner
+            if (options.arg_owner_picture.empty() ||
+                options.arg_owner_lastname.empty() ||
+                options.arg_owner_name.empty() ||
+                options.arg_owner_address.empty() ||
+                options.arg_owner_country.empty() ||
+                options.arg_owner_contact.empty())
+            {
+                std::cout << "ERROR: ";
+                std::cout << "owner_picture, ";
+                std::cout << "owner_lastname, ";
+                std::cout << "owner_name, ";
+                std::cout << "owner_address, ";
+                std::cout << "owner_country, ";
+                std::cout << "owner_contact ";
+                std::cout << "is required." << std::endl;
+                exit(1);
+            }
+            payload["owner_id"] = userKeys.pubKey;
+            //load file to Uchar then transform to hex
+            std::ifstream infile(options.arg_owner_picture, std::ios::binary);
+            std::string picture_content((std::istreambuf_iterator<char>(infile)),
+                                        (std::istreambuf_iterator<char>()));
+            payload["owner_picture"] = UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length());
+            payload["owner_picture_ext"] = options.arg_owner_picture.substr(options.arg_owner_picture.find_last_of(".") + 1); //".png";
 
-        // //load file to Uchar then transform to hex
-        std::ifstream infile(options.arg_owner_pic, std::ios::binary);
-        // std::ostringstream ostrm;
-        // // ostrm << infile.rdbuf();
-        std::string picture_content((std::istreambuf_iterator<char>(infile)),
-                                    (std::istreambuf_iterator<char>()));
-        // ostrm << std::hex << picture_content;
-        // payload["owner_picture"] = UcharToHexStr((unsigned char *)ostrm.str().c_str(), ostrm.str().length());
-        payload["owner_picture"] = UcharToHexStr((unsigned char *)picture_content.c_str(), picture_content.length());
-        //payload["owner_picture"] = ostrm.str();
-        payload["owner_picture_ext"] = options.arg_owner_pic.substr(options.arg_owner_pic.find_last_of(".") + 1); //".png";
-
+            payload["owner_lastname"] = options.arg_owner_lastname;
+            payload["owner_name"] = options.arg_owner_name;
+            payload["owner_address"] = options.arg_owner_address;
+            payload["owner_country"] = options.arg_owner_country;
+            payload["owner_contact"] = options.arg_owner_contact;
+            buildCarTPAddress(tp_family, "owner", carKeys.pubKey, address);
+        }
+        else
+        {
+            std::cout << "ERROR: Command " << options.arg_command << " unknown." << std::endl;
+            exit(1);
+        }
+        const std::string address_str = UcharToHexStr(address, 35);
+        if (options.isverbose)
+            std::cout << "Address used:" << address_str << std::endl;
         if (options.isverbose)
             std::cout << "Encoding transaction payload..." << std::endl;
         std::vector<uint8_t> payload_vect = json::to_cbor(payload);
@@ -447,15 +551,6 @@ int main(int argc, char **argv)
         std::string TxnNonce = UcharToHexStr(Transactionnonce, nonce_size);
 
         message_hash_str = sha512Data(message);
-        unsigned char address[35];
-        buildAddress(tp_family, carKeys.pubKey, address);
-        const std::string address_str = UcharToHexStr(address, 35);
-        if (options.isverbose)
-            std::cout << "address used:" << address_str << std::endl;
-
-        // buildAddress(tp_family, "name", address);
-        // address_str = UcharToHexStr(address, 35);
-        // std::cout << "address_str:" << address_str << std::endl;
 
         //first build transaction
         //& add all necessary data to protos messages
@@ -511,7 +606,7 @@ int main(int argc, char **argv)
         signature_serilized_str = UcharToHexStr(signature_serilized, SIGNATURE_SERILIZED_SIZE);
 
         myBatch->set_header_signature(signature_serilized_str);
-        myBatch->set_trace(true); //more logs in sawtooth
+        //myBatch->set_trace(true); //more logs in sawtooth
 
         // std::cout << "myTransactionHeader" << std::endl;
         // printProtoJson(myTransactionHeader);

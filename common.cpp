@@ -91,7 +91,7 @@ std::string ToHex(std::string s, bool upper_case = false)
 
     return ret.str();
 }
-void buildAddress(std::string txnFamily, std::string entryName, unsigned char *ouput35bytes)
+void buildIntkeyAddress(std::string txnFamily, std::string entryName, unsigned char *ouput35bytes)
 {
     //this address is used for intkey transaction processor
     // Example: txnFamily="intkey", entryName="name"
@@ -101,7 +101,7 @@ void buildAddress(std::string txnFamily, std::string entryName, unsigned char *o
     std::string txnFamily_hex_str = sha512Data(txnFamily);
     unsigned char txnFamily_hex_char[6];
     HexStrToUchar(txnFamily_hex_char, txnFamily_hex_str.c_str(), 6);
-    for (int i = 0; i < (6 / 2); i++)
+    for (int i = 0; i < 3; i++)
     {
         ouput35bytes[i] = txnFamily_hex_char[i];
     }
@@ -110,9 +110,40 @@ void buildAddress(std::string txnFamily, std::string entryName, unsigned char *o
     entryName_hex_str = entryName_hex_str.substr(entryName_hex_str.size() - 64, entryName_hex_str.size());
     unsigned char entryName_hex_char[64];
     HexStrToUchar(entryName_hex_char, entryName_hex_str.c_str(), 64);
-    for (int i = 0; i < (64 / 2); i++)
+    for (int i = 0; i < 32; i++)
     {
         ouput35bytes[3 + i] = entryName_hex_char[i];
+    }
+    //std::cout << "Address:" << UcharToHexStr(ouput35bytes, 35) << std::endl;
+}
+
+void buildCarTPAddress(std::string txnFamily, std::string data_type, std::string key_id, unsigned char *ouput35bytes)
+{
+    emptyBytes(ouput35bytes, 35);
+    //build prefix namespace: first set the first 3 bytes
+    std::string txnFamily_hex_str = sha512Data(txnFamily);
+    unsigned char txnFamily_hex_char[6];
+    HexStrToUchar(txnFamily_hex_char, txnFamily_hex_str.c_str(), 6);
+    for (int i = 0; i < 3; i++)
+    {
+        ouput35bytes[i] = txnFamily_hex_char[i];
+    }
+    //next is data_type: 2 bytes
+    std::string data_type_hex_str = sha512Data(data_type);
+    unsigned char data_type_hex_char[4];
+    HexStrToUchar(data_type_hex_char, data_type_hex_str.c_str(), 4);
+    for (int i = 0; i < 2; i++)
+    {
+        ouput35bytes[i] = data_type_hex_char[i];
+    }
+    //now add the rest of the address: for cartp it is the 30bytes of the MSB of the sha512 of the key
+    std::string key_id_hex_str = sha512Data(key_id);
+    key_id_hex_str = key_id_hex_str.substr(key_id_hex_str.size() - 60, key_id_hex_str.size());
+    unsigned char key_id_hex_char[60];
+    HexStrToUchar(key_id_hex_char, key_id_hex_str.c_str(), 60);
+    for (int i = 0; i < 30; i++)
+    {
+        ouput35bytes[3 + i] = key_id_hex_char[i];
     }
     //std::cout << "Address:" << UcharToHexStr(ouput35bytes, 35) << std::endl;
 }

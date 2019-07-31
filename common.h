@@ -71,17 +71,18 @@ std::string sha256Data(std::string data);
 std::string sha512Data(std::string data);
 void emptyBytes(unsigned char *data, int len);
 std::string ToHex(std::string s, bool upper_case);
-void buildAddress(std::string txnFamily, std::string entryName, unsigned char *ouput35bytes);
+void buildIntkeyAddress(std::string txnFamily, std::string entryName, unsigned char *ouput35bytes);
+void buildCarTPAddress(std::string txnFamily, std::string data_type, std::string uid, unsigned char *ouput35bytes);
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 int sendData(std::string data, std::string api_endpoint, bool isverbose);
 int LoadKeys(
-        SECP256K1_API::secp256k1_context *ctx, 
-        unsigned char *privateKey, 
-        std::string &privateKey_str, 
-        SECP256K1_API::secp256k1_pubkey &publicKey, 
-        unsigned char *publicKey_serilized, 
-        std::string &publicKey_str,
-        bool isverbose);
+    SECP256K1_API::secp256k1_context *ctx,
+    unsigned char *privateKey,
+    std::string &privateKey_str,
+    SECP256K1_API::secp256k1_pubkey &publicKey,
+    unsigned char *publicKey_serilized,
+    std::string &publicKey_str,
+    bool isverbose);
 int GenerateKeyPair(
     SECP256K1_API::secp256k1_context *ctx,
     unsigned char *privateKey,
