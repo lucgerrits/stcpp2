@@ -24,6 +24,7 @@ void abort(void) __THROW __attribute__((__noreturn__));
 // #define PUBLICKEY_FILENAME "ec.public.key"
 // #define SAWTOOTH_REST_API "https://sawtooth-explore-8090.gerrits-luc.com"
 // #define SAWTOOTH_BATCH_MAX_TRANSACTIONS 100
+//#define MAX_PICTURE_BUFFER_SIZE 90000
 #define PRIVATE_KEY_SIZE 32
 #define PUBLIC_KEY_SIZE 64
 #define PUBLIC_KEY_SERILIZED_SIZE 33
@@ -31,7 +32,8 @@ void abort(void) __THROW __attribute__((__noreturn__));
 #define PUBLIC_KEY "0265e1a0353a5de3ad229f0c96fe4851949c856d5ad57717d4615c981ddea1f841"
 #define SIGNATURE_SERILIZED_SIZE 64
 #define HASH_SHA256_SIZE 32
-#define MAX_PICTURE_BUFFER_SIZE 90000
+#define SETTINGS_CARTP_FACTORY_ADDRESS "000000a87cb5eafdcca6a89a6f6aa92a4b7cb206c8aaa93d80a76817373ca1c7634a4b"
+#define NONCE_SIZE 10
 
 //secp256k1
 #include "secp256k1/include/secp256k1.h"

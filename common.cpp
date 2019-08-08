@@ -119,9 +119,9 @@ void buildIntkeyAddress(std::string txnFamily, std::string entryName, unsigned c
 
 void buildCarTPAddress(std::string txnFamily, std::string data_type, std::string key_id, unsigned char *ouput35bytes)
 {
-    std::cout << "txnFamily:" << txnFamily << std::endl;
-    std::cout << "data_type:" << data_type << std::endl;
-    std::cout << "key_id:" << key_id << std::endl;
+    // std::cout << "txnFamily:" << txnFamily << std::endl;
+    // std::cout << "data_type:" << data_type << std::endl;
+    // std::cout << "key_id:" << key_id << std::endl;
     emptyBytes(ouput35bytes, 35);
     //build prefix namespace: first set the first 3 bytes
     std::string txnFamily_hex_str = sha512Data(txnFamily);
@@ -141,7 +141,7 @@ void buildCarTPAddress(std::string txnFamily, std::string data_type, std::string
     }
     //now add the rest of the address: for cartp it is the 30bytes of the MSB of the sha512 of the key
     std::string key_id_hex_str = sha512Data(key_id);
-    std::cout << "key_id_hex_str:" << key_id_hex_str << std::endl;
+    //std::cout << "key_id_hex_str:" << key_id_hex_str << std::endl;
     key_id_hex_str = key_id_hex_str.substr(0, 60);
     unsigned char key_id_hex_char[60];
     HexStrToUchar(key_id_hex_char, key_id_hex_str.c_str(), 60);
@@ -193,7 +193,7 @@ int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false
     wt.readptr = data.c_str();
     wt.sizeleft = data.length();
 
-    std::cout << "Length data:" << (long)wt.sizeleft << std::endl;
+    //std::cout << "Length data:" << (long)wt.sizeleft << std::endl;
 
     struct curl_slist *headers = NULL;
     std::string readBuffer;
@@ -222,15 +222,19 @@ int sendData(std::string data, std::string api_endpoint, bool isverbose /*=false
         if (isverbose)
             std::cout << "***Transaction sended***" << std::endl;
         if (isverbose)
-            std::cout << "STATUS CODE:" << res << std::endl;
+            std::cout << "CURL STATUS CODE:" << res << std::endl;
         std::cout << "Response:" << std::endl;
         std::cout << readBuffer << std::endl;
     }
     curl_global_cleanup();
     if (res != CURLE_OK)
+    {
+        std::cout << "CURL STATUS CODE:" << res << std::endl;
+        std::cout << curl_easy_strerror(res) << std::endl;
         return 0;
-    else
+    } else {
         return 1;
+    }
 }
 
 int LoadKeys(
